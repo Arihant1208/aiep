@@ -45,8 +45,8 @@
 | Spec said | We chose | Why | ADR |
 | --- | --- | --- | --- |
 | .NET 8 | .NET 10 LTS | .NET 8 support ends 10 Nov 2026 | 0003 |
-| RabbitMQ or Redis Streams + outbox | PostgreSQL queue (proposed) | No dual write, native fairness, fewer moving parts | 0005 |
-| Python evaluation runner | .NET scorers first (proposed) | One runtime and security model for MVP scorers | 0014 |
+| RabbitMQ or Redis Streams + outbox | PostgreSQL queue | No dual write, native fairness, fewer moving parts | 0005 |
+| Python evaluation runner | .NET scorers first | One runtime and security model for MVP scorers | 0014 |
 
 ## Known limitations of the scaffold
 
