@@ -1,0 +1,14 @@
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+TestResults/
+coverage*/
+publish/
+
+# Local secrets and overrides. Use .env.example as the template.
+.env
+appsettings.Local.json

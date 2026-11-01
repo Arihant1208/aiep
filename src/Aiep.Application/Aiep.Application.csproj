@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Use cases, authorization decisions, and ports (interfaces) implemented by Infrastructure. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Aiep.Domain\Aiep.Domain.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\Aiep.Application\Aiep.Application.csproj" />
+    <ProjectReference Include="..\Aiep.Infrastructure\Aiep.Infrastructure.csproj" />
+    <ProjectReference Include="..\Aiep.ServiceDefaults\Aiep.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Aiep.Domain/Aiep.Domain.csproj" />
+    <Project Path="src/Aiep.Application/Aiep.Application.csproj" />
+    <Project Path="src/Aiep.Infrastructure/Aiep.Infrastructure.csproj" />
+    <Project Path="src/Aiep.ServiceDefaults/Aiep.ServiceDefaults.csproj" />
+    <Project Path="src/Aiep.Api/Aiep.Api.csproj" />
+    <Project Path="src/Aiep.Worker/Aiep.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Aiep.Domain.Tests/Aiep.Domain.Tests.csproj" />
+    <Project Path="tests/Aiep.Api.Tests/Aiep.Api.Tests.csproj" />
+  </Folder>
+</Solution>

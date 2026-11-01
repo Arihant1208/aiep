@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore Aiep.slnx
+      - name: Check formatting
+        run: dotnet format Aiep.slnx --verify-no-changes --no-restore
+      - name: Build
+        run: dotnet build Aiep.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test Aiep.slnx -c Release --no-build --logger trx --results-directory TestResults
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+
+  containers:
+    name: Compose and images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose file
+        run: docker compose --profile app config --quiet
+      - name: Build service images
+        run: docker compose --profile app build
