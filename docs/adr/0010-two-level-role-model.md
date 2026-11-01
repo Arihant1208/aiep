@@ -1,8 +1,8 @@
 # ADR-0010: Two-level role model: organization roles and workspace grants
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-01
-- **Deciders:** Arihant Jain (pending sign-off)
+- **Deciders:** Arihant Jain
 - **Spec references:** §8.2, §8.3, §8.5, §13.1, FR-005
 
 ## Context
@@ -67,5 +67,5 @@ resource-level sharing below workspace granularity.
 
 ## Acceptance criteria
 
-- [ ] Project owner agrees on org role and workspace role names and the implicit-admin rule.
-- [ ] Permission matrix in the authorization model is reviewed and frozen for Phase 1.
+- [x] Project owner agrees on org role and workspace role names and the implicit-admin rule.
+- [x] Permission matrix in the authorization model is reviewed and frozen for Phase 1.

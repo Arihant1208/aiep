@@ -1,8 +1,8 @@
 # ADR-0013: Data access with EF Core; schema via versioned SQL migrations
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-01
-- **Deciders:** Arihant Jain (pending sign-off)
+- **Deciders:** Arihant Jain
 - **Spec references:** §6.3, §13.3, §14.4
 
 ## Context
@@ -34,9 +34,10 @@ also needs hand-tuned `SKIP LOCKED` SQL. On the other hand, typed queries and ch
 | --- | --- |
 | EF Core migrations with `migrationBuilder.Sql(...)` for RLS | Security-critical SQL is buried in C# migration classes; snapshot noise |
 | Dapper only | Fine, but more boilerplate for CRUD-heavy control-plane endpoints |
-| Flyway/Liquibase | JVM dependency in a .NET repo; DbUp covers the need |
+| Flyway/Liquibase | JVM dependency in a .NET repo |
+| DbUp | Viable; an in-house runner is small and makes the locking and checksum behaviour explicit |
 
 ## Acceptance criteria
 
-- [ ] Project owner agrees on SQL-first migrations.
-- [ ] Choose DbUp or an in-house runner during the Phase 1 spike.
+- [x] Project owner agrees on SQL-first migrations.
+- [x] Runner: in-house `Aiep.Migrator` (about 150 lines on Npgsql). It gives explicit control of transactions, advisory locking and checksums, and avoids an extra dependency.

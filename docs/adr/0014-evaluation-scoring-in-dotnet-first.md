@@ -1,8 +1,8 @@
 # ADR-0014: Evaluation scoring in .NET first; Python only when needed
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-01
-- **Deciders:** Arihant Jain (pending sign-off)
+- **Deciders:** Arihant Jain
 - **Spec references:** §5.1 (evaluation runner in Python), §10.3, §10.4
 
 ## Context
@@ -36,4 +36,4 @@ that needs tenant-scoped data access.
 
 ## Acceptance criteria
 
-- [ ] Project owner agrees to defer Python.
+- [x] Project owner agrees to defer Python.

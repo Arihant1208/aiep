@@ -1,8 +1,8 @@
 # ADR-0009: One model provider behind an adapter, plus a deterministic fake
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-01
-- **Deciders:** Arihant Jain (pending sign-off)
+- **Deciders:** Arihant Jain
 - **Spec references:** §10.1, §10.2, §24
 
 ## Context
@@ -50,5 +50,5 @@ The first vertical slice is done and the evaluation phase would benefit from a c
 
 ## Acceptance criteria
 
-- [ ] Project owner confirms the provider (or picks another, such as Azure OpenAI, to stay within Azure).
-- [ ] Account and budget limits set on the provider side before any real calls.
+- [x] Project owner confirms the provider (or picks another, such as Azure OpenAI, to stay within Azure).
+- [ ] Account and budget limits set on the provider side before any real calls (before Phase 2 real-provider tests).

@@ -37,8 +37,8 @@
 - [x] [Architecture overview](../architecture/overview.md), [task lifecycle and delivery contract](../architecture/task-lifecycle.md)
 - [x] [Threat model v0.1](../security/threat-model.md), [authorization model](../security/authorization-model.md)
 - [x] [Data model v0.1](../data/data-model.md)
-- [ ] **Sign off Proposed ADRs:** 0005 queue, 0009 provider, 0010 roles, 0013 migrations, 0014 evaluation runtime
-- [ ] Choose the identity provider for Phase 1 (see [ADR-0008](../adr/0008-identity-oidc-and-scoped-api-keys.md))
+- [x] **Signed off** ADRs 0005, 0009, 0010, 0013, 0014 (2026-11-01)
+- [x] Identity provider for Phase 1: Keycloak (ADR-0016, written in Phase 1)
 
 ## Deviations from the spec (all recorded in ADRs)
 

@@ -1,8 +1,8 @@
 # ADR-0005: PostgreSQL-backed work queue for the MVP
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-01
-- **Deciders:** Arihant Jain (pending sign-off)
+- **Deciders:** Arihant Jain
 - **Spec references:** §5.2, §9.2, §9.4, §9.5, §23 (spec preferred RabbitMQ)
 
 ## Context
@@ -74,5 +74,5 @@ impressive-sounding than "RabbitMQ" on a CV (the trade-off analysis is the portf
 
 ## Acceptance criteria
 
-- [ ] Project owner agrees to deviate from the spec's RabbitMQ preference.
+- [x] Project owner agrees to deviate from the spec's RabbitMQ preference.
 - [ ] Phase 2 spike: claim/lease/heartbeat/recovery prototype with an integration test that kills a worker mid-run.
