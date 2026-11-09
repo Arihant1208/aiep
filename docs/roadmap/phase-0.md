@@ -11,7 +11,7 @@
 - [x] Modular .NET 10 solution (`Aiep.slnx`): Domain, Application, Infrastructure, ServiceDefaults, Api, Worker ([ADR-0002](../adr/0002-modular-monolith-with-separate-worker.md), [ADR-0003](../adr/0003-dotnet-10-lts.md))
 - [x] Central package management, warnings as errors, `.editorconfig`, pinned SDK
 - [x] Test projects: domain unit tests (run state machine), API host smoke tests
-- [ ] **First successful local build and test run** (`dotnet test Aiep.slnx`), on a machine with the .NET 10 SDK
+- [x] First successful local build and test run: WSL2 Ubuntu 26.04, SDK 10.0.114. Build, format check and 28/28 tests pass (2026-11-09)
 
 ### Local environment
 
@@ -20,7 +20,7 @@
 - [x] API and worker Dockerfiles (non-root), `app` compose profile
 - [x] Health endpoints (`/health/live`, `/health/ready` with PostgreSQL check), correlation IDs, Problem Details
 - [x] OpenTelemetry wiring with OTLP export when configured ([ADR-0012](../adr/0012-opentelemetry-observability.md))
-- [ ] **Verify** `docker compose up -d` starts cleanly and traces from the API appear in Jaeger
+- [x] Verified `docker compose --profile app up`: all 8 services run; roles are non-superuser and `NOBYPASSRLS`; `/health/ready` = 200 as `aiep_api`; traces in Jaeger as `aiep-api`; HTTP and GC metrics in Prometheus (2026-11-09)
 
 ### CI
 
@@ -50,6 +50,7 @@
 
 ## Known limitations of the scaffold
 
-- Package and image versions were set by hand and have not been restored or built yet. The first build may need version bumps.
 - The worker's `RunProcessor` is a placeholder loop. Execution arrives in Phase 2.
-- No migrations yet. The schema starts in Phase 1 once ADR-0013 is accepted.
+- No migrations yet. The schema starts in Phase 1 (ADR-0013 accepted).
+- Package versions were bumped on first build: NuGet audit flagged OpenTelemetry 1.12.0
+  (GHSA-g94r-2vxg-569j, GHSA-4625-4j76-fww9). Warnings-as-errors caught it, as intended.
