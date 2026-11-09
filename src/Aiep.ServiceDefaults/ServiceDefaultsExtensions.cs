@@ -40,7 +40,8 @@ public static class ServiceDefaultsExtensions
         });
 
         var telemetry = builder.Services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+            .ConfigureResource(resource => resource.AddService(
+                builder.Configuration["OTEL_SERVICE_NAME"] ?? builder.Environment.ApplicationName))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
