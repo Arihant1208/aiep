@@ -33,6 +33,7 @@ We use a lightweight variant of Michael Nygard's format ([ADR-0001](0001-record-
 | [0014](0014-evaluation-scoring-in-dotnet-first.md) | Evaluation scoring in .NET first; Python only when needed | Accepted | — |
 | [0015](0015-api-conventions.md) | API conventions: versioning, errors, IDs, concealment | Accepted | — |
 | [0016](0016-keycloak-oidc-provider.md) | Use Keycloak as the OIDC provider | Accepted | — |
+| [0017](0017-pre-tenant-operations-security-definer.md) | Pre-tenant operations through narrow SECURITY DEFINER functions | **Proposed** | — |
 
 ## Writing a new ADR
 

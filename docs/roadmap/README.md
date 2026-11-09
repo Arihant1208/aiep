@@ -6,7 +6,7 @@ capability at a time, then harden it.*
 | Phase | Weeks | Theme | Exit criterion | Status |
 | --- | --- | --- | --- | --- |
 | [0](phase-0.md) | 1 | Architecture and foundations | Reproducible local environment; agreed architecture | **In progress** |
-| 1 | 2–3 | Control plane and tenant security | Users access only resources authorized for their identity and scope | Not started |
+| [1](phase-1.md) | 2–3 | Control plane and tenant security | Users access only resources authorized for their identity and scope | **In progress** |
 | 2 | 4–5 | Task lifecycle and durable execution | Submit → queue → execute → persist works, including after a simulated worker crash | Not started |
 | 3 | 6–7 | Execution isolation and observability | Every run can be traced, measured and cleaned up safely | Not started |
 | 4 | 8–9 | Evaluation and cost governance | Compare two configurations on one dataset; explain quality/latency/cost trade-offs | Not started |
@@ -17,9 +17,9 @@ capability at a time, then harden it.*
 If time is short, protect this order: **tenant-isolation tests → durable end-to-end execution → observability →
 evaluation → UI → cloud polish.** Kubernetes, multiple providers and the other Spec §24 items stay deferred.
 
-## Phase 1 preview (next)
+## Phase 1 outline
 
-Blocked on: [ADR-0010](../adr/0010-two-level-role-model.md) (roles), [ADR-0013](../adr/0013-data-access-and-migrations.md) (migrations).
+Progress is tracked in the [Phase 1 checklist](phase-1.md).
 
 1. Migration runner and baseline schema: subjects, organizations, memberships, workspaces, workspace_memberships, api_keys, audit_events.
 2. Tenant-context unit of work (`SET LOCAL`) and RLS policies.

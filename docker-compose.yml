@@ -1,6 +1,6 @@
 # Local development stack. Synthetic data and local-only credentials (see .env.example).
 #   Infrastructure only:   docker compose up -d
-#   Infrastructure + apps: docker compose --profile app up -d --build
+#   Infrastructure + apps: docker compose --profile app up -d --build   (migrator runs first, then api + worker)
 name: aiep
 
 services:
@@ -71,6 +71,19 @@ services:
       - prometheus
       - jaeger
 
+  migrator:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: src/Aiep.Migrator/Dockerfile
+    environment:
+      # The only service that connects as the schema owner. It exits after applying migrations (ADR-0013).
+      ConnectionStrings__AiepMigrator: Host=postgres;Database=aiep;Username=aiep_migrator;Password=${AIEP_MIGRATOR_PASSWORD:-migrator_local_dev}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     profiles: ["app"]
     build:
@@ -84,8 +97,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
 
   worker:
     profiles: ["app"]
@@ -98,8 +111,8 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: aiep-worker
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

@@ -12,7 +12,8 @@
 
 ```bash
 docker compose up -d
-dotnet test Aiep.slnx
+dotnet run --project src/Aiep.Migrator     # applies db/migrations as aiep_migrator; safe to re-run
+dotnet test Aiep.slnx                      # Aiep.Database.Tests starts its own Postgres container (needs Docker)
 dotnet run --project src/Aiep.Api
 ```
 
@@ -24,6 +25,9 @@ To run the API and worker as containers too:
 ```bash
 docker compose --profile app up -d --build
 ```
+
+The `migrator` service runs first and exits; the API and worker start only if it succeeded
+(`docker compose logs migrator` shows what it applied).
 
 The containerised API listens on `http://localhost:8080`.
 
@@ -42,7 +46,7 @@ The containerised API listens on `http://localhost:8080`.
 
 | Role | Used by | Notes |
 | --- | --- | --- |
-| `aiep_migrator` | Migration runner | Owns schema `aiep`. Never used by running services. |
+| `aiep_migrator` | `Aiep.Migrator` | Owns schema `aiep` and the `SECURITY DEFINER` functions. Never used by running services. |
 | `aiep_api` | API | `NOBYPASSRLS`, not owner, so RLS always applies |
 | `aiep_worker` | Worker | `NOBYPASSRLS`, not owner |
 
@@ -65,7 +69,10 @@ The init script runs only when the Postgres volume is first created. To re-run i
 docker compose down -v
 ```
 
-This **deletes all local data**.
+This **deletes all local data**. Run the migrator again afterwards (the `app` profile does it for you).
+
+`Aiep.Database.Tests` doesn't use the Compose database: it starts a throwaway `postgres:17-alpine` container, runs the
+same `01-roles.sh`, and migrates it with the real runner.
 
 ## Conventions
 

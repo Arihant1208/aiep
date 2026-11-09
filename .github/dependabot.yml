@@ -14,6 +14,6 @@ updates:
     schedule:
       interval: weekly
   - package-ecosystem: docker
-    directories: ["/src/Aiep.Api", "/src/Aiep.Worker"]
+    directories: ["/src/Aiep.Api", "/src/Aiep.Worker", "/src/Aiep.Migrator"]
     schedule:
       interval: weekly

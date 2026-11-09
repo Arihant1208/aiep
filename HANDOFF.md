@@ -135,7 +135,14 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
    - Consequences: another container locally; Keycloak's realm export format changes between versions (pin it).
    - Update `docs/adr/README.md` index and `docs/roadmap/phase-0.md` reference.
 
-2. **`Aiep.Migrator` + baseline schema.**
+2. ✅ **Done 2026-11-09:** `src/Aiep.Migrator`, `db/migrations/V0001__tenancy_baseline.sql`, `migrator` Compose service,
+   `tests/Aiep.Database.Tests` (61 tests, Testcontainers). Bootstrap design recorded as
+   [ADR-0017](docs/adr/0017-pre-tenant-operations-security-definer.md), **Proposed** pending owner sign-off.
+   Progress now lives in [docs/roadmap/phase-1.md](docs/roadmap/phase-1.md). Original brief kept below.
+   Gotcha for step 3: `FORCE` RLS binds the table owner too, so `aiep_migrator` sees no tenant rows without context.
+   `tests/Aiep.Database.Tests/TenantDb.cs` is a test-only stand-in for the unit of work; replace its use with the real
+   one in step 3 where sensible.
+   **`Aiep.Migrator` + baseline schema.**
    - New console project `src/Aiep.Migrator` (add to `Aiep.slnx`). Applies `db/migrations/V*.sql` in order as
      `aiep_migrator`; table `aiep.schema_migrations(version, name, checksum_sha256, applied_at)`;
      `pg_advisory_lock` so concurrent runs are safe; each script in its own transaction; **fails if an applied

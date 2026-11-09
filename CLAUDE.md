@@ -12,6 +12,7 @@ docker compose --profile app up -d --build        # infra + api + worker contain
 dotnet build Aiep.slnx
 dotnet test Aiep.slnx
 dotnet format Aiep.slnx                           # CI runs --verify-no-changes
+dotnet run --project src/Aiep.Migrator            # apply db/migrations (as aiep_migrator)
 dotnet run --project src/Aiep.Api                 # http://localhost:5080
 ```
 

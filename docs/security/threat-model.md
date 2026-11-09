@@ -40,9 +40,9 @@ TB4: model output re-entering the system. TB5: privileged human access.
 
 | # | Threat | Boundary | Mitigation | Verified by |
 | --- | --- | --- | --- | --- |
-| T1 | **Cross-tenant read through IDOR / guessed IDs** | TB1/TB2 | Opaque IDs; authorization on resolved ownership; 404 concealment; RLS; composite FKs | Negative isolation suite (Spec §6.5) |
-| T2 | **Tenant context leak across pooled connections** | TB2 | `SET LOCAL` in transaction only; single unit-of-work path | Pool-size-1 alternating-tenant test |
-| T3 | Missing tenant context returns rows | TB2 | Policies compare to `current_setting(..., true)`; NULL matches nothing | RLS test with no context |
+| T1 | **Cross-tenant read through IDOR / guessed IDs** | TB1/TB2 | Opaque IDs; authorization on resolved ownership; 404 concealment; RLS; composite FKs | DB layer: `TenantIsolationTests` (cross-tenant read/update/insert/move, composite FKs). API layer: negative isolation suite (Spec §6.5), Phase 1 step 7 |
+| T2 | **Tenant context leak across pooled connections** | TB2 | `SET LOCAL` in transaction only; single unit-of-work path | DB layer: `TenantIsolationTests.Tenant_context_does_not_outlive_its_transaction_on_a_reused_connection`. Pool-size-1 alternating-tenant test through the unit of work: Phase 1 step 3 |
+| T3 | Missing tenant context returns rows | TB2 | Policies compare to `current_setting(..., true)`; NULL matches nothing | `TenantIsolationTests.Without_tenant_context_every_tenant_table_returns_no_rows` (catalog-driven, every tenant table, both service roles) |
 | T4 | Spoofed tenant in body or queue payload | TB1 | Scope derived from auth and resource rows only; worker uses claimed row | Tests posting a foreign `organizationId` |
 | T5 | Stolen or leaked API key | TB1 | Prefix for leak scanning; hashed at rest; scoped; expiry; instant revocation; `last_used_at` | Revoked/expired key tests |
 | T6 | Privilege escalation through role or key management | TB1 | Key scope ⊆ creator permissions, re-checked on use; only Owner can grant Owner; audited | Escalation tests |
@@ -54,7 +54,7 @@ TB4: model output re-entering the system. TB5: privileged human access.
 | T12 | Spend exhaustion / noisy neighbour | TB1 | Reserve-then-settle quotas; per-org and per-workspace concurrency; fair claim; payload limits; 429 | Load test with one abusive tenant |
 | T13 | Duplicate execution doubles cost or side effects | TB3 | Delivery contract; idempotent persistence; provider idempotency keys where supported | Duplicate-delivery fault injection |
 | T14 | Operator over-access to tenant data | TB5 | No standing access; time-bound break-glass; audited | Audit event tests |
-| T15 | Audit log tampering | TB2 | Services have INSERT/SELECT only on `audit_events`; later hash chaining | Grant tests |
+| T15 | Audit log tampering | TB2 | Services have INSERT/SELECT only on `audit_events`; later hash chaining | `PrivilegeAndBootstrapTests.Services_cannot_update_or_delete_audit_events`, `…Even_the_owner_cannot_update_audit_events_because_of_the_trigger` |
 | T16 | Supply-chain compromise | build | Pinned packages and images; Dependabot; image scanning; SBOM | CI |
 | T17 | Staging/production credential crossover | env | Environment-prefixed keys; separate identities and resources | Key-environment test |
 
