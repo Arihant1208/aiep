@@ -1,6 +1,6 @@
 # ADR-0008: Identity: OIDC for people, scoped API keys for applications
 
-- **Status:** Accepted
+- **Status:** Accepted. IdP choice and the dev-only token issuer rule partly superseded by [ADR-0016](0016-keycloak-oidc-provider.md)
 - **Date:** 2026-11-01
 - **Deciders:** Arihant Jain
 - **Spec references:** §8.1, FR-001, FR-007, FR-023, FR-024

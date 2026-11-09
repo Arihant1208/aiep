@@ -75,7 +75,7 @@ First prompt suggestion: *"Read HANDOFF.md and continue with Phase 1, step 1."*
 | 0013 | Schema in **SQL migrations** (`db/migrations/V####__name.sql`) applied by an **in-house `Aiep.Migrator`** as `aiep_migrator`; EF Core for typed queries (no EF migrations); raw Npgsql for hot paths; one tenant-context unit of work |
 | 0014 | Evaluation scorers in .NET, versioned; Python only for a concrete need |
 | 0015 | `/v1`; prefixed opaque IDs (UUIDv7 inside); **404 to hide unauthorized resources**, 403 only when the resource is visible; RFC 9457 Problem Details with stable `code`; `Idempotency-Key` on submissions; cursor pagination |
-| **0016** | **To write first in Phase 1:** Keycloak as the OIDC provider (owner's choice). See §6 |
+| 0016 | **Keycloak** as the OIDC provider for dev/CI/tests; realm-as-code; IdP roles ignored; production hosting deferred to Phase 5 |
 
 Still open (unticked, not blocking Phase 1): ADR-0005 Phase 2 queue spike; ADR-0009 provider-side budget limits before real calls.
 
@@ -122,7 +122,9 @@ Not done yet:
 
 Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates, then commit.
 
-1. **ADR-0016: Keycloak as the OIDC provider.**
+1. ✅ **Done 2026-11-09:** [ADR-0016](docs/adr/0016-keycloak-oidc-provider.md) written and Accepted (Keycloak 26.8.2 pinned;
+   no dev-only token issuer; ADR-0008 status line notes the partial supersession). Original brief kept below for reference.
+   **ADR-0016: Keycloak as the OIDC provider.**
    - Context: ADR-0008 left the IdP open; the owner chose Keycloak. Reasons to record: open source, runs locally in
      Compose (realistic OIDC in dev and CI instead of a fake issuer), standard OIDC so the platform can move to Entra or Auth0 later.
    - Decision points to record: Keycloak in Compose (`quay.io/keycloak/keycloak`, pin a current version, `start-dev`
@@ -163,6 +165,8 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
      locally, Key Vault later), constant-time compare, expiry and revocation, `last_used_at` (write it throttled),
      custom authentication handler. Reject keys in query strings.
    - Integration tests get real tokens from Keycloak (Testcontainers.Keycloak or the compose instance).
+   - ADR-0016 commits to two tests: a token carrying a Keycloak admin/realm role grants nothing in AIEP, and a token
+     signed by an unknown key is rejected. Only RS256/ES256 accepted; HTTPS metadata may be off only in `Development`.
 
 5. **Authorization** (`Aiep.Application`).
    - `Permission` constants, a role→permission table built from the matrix in `docs/security/authorization-model.md`

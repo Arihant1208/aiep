@@ -38,7 +38,7 @@
 - [x] [Threat model v0.1](../security/threat-model.md), [authorization model](../security/authorization-model.md)
 - [x] [Data model v0.1](../data/data-model.md)
 - [x] **Signed off** ADRs 0005, 0009, 0010, 0013, 0014 (2026-11-01)
-- [x] Identity provider for Phase 1: Keycloak (ADR-0016, written in Phase 1)
+- [x] Identity provider for Phase 1: Keycloak ([ADR-0016](../adr/0016-keycloak-oidc-provider.md), written at the start of Phase 1)
 
 ## Deviations from the spec (all recorded in ADRs)
 

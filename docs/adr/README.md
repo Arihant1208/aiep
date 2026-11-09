@@ -24,7 +24,7 @@ We use a lightweight variant of Michael Nygard's format ([ADR-0001](0001-record-
 | [0005](0005-postgresql-backed-work-queue.md) | PostgreSQL-backed work queue for the MVP | Accepted | — |
 | [0006](0006-tenant-isolation-shared-database-rls.md) | Tenant isolation: shared database, RLS, and application authorization | Accepted | — |
 | [0007](0007-trusted-allowlisted-handlers-only.md) | Execution trust model: trusted, allowlisted handlers only | Accepted | — |
-| [0008](0008-identity-oidc-and-scoped-api-keys.md) | Identity: OIDC for people, scoped API keys for applications | Accepted | — |
+| [0008](0008-identity-oidc-and-scoped-api-keys.md) | Identity: OIDC for people, scoped API keys for applications | Accepted (IdP choice and local issuer partly superseded by 0016) | — |
 | [0009](0009-single-model-provider-behind-adapter.md) | One model provider behind an adapter, plus a deterministic fake | Accepted | — |
 | [0010](0010-two-level-role-model.md) | Two-level role model: organization roles and workspace grants | Accepted | — |
 | [0011](0011-docker-compose-local-managed-containers-cloud.md) | Docker Compose locally, managed containers on Azure | Accepted | — |
@@ -32,6 +32,7 @@ We use a lightweight variant of Michael Nygard's format ([ADR-0001](0001-record-
 | [0013](0013-data-access-and-migrations.md) | Data access with EF Core; schema via versioned SQL migrations | Accepted | — |
 | [0014](0014-evaluation-scoring-in-dotnet-first.md) | Evaluation scoring in .NET first; Python only when needed | Accepted | — |
 | [0015](0015-api-conventions.md) | API conventions: versioning, errors, IDs, concealment | Accepted | — |
+| [0016](0016-keycloak-oidc-provider.md) | Use Keycloak as the OIDC provider | Accepted | — |
 
 ## Writing a new ADR
 

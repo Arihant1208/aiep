@@ -6,6 +6,8 @@ becomes the source for the role-to-permission table in code and its unit tests. 
 ## Algorithm (every protected request)
 
 1. **Authenticate**: OIDC token or API key → `subject_id` (+ key scope if API key). Reject → `401`.
+   Roles and groups in the token are ignored; authorization data lives only in AIEP
+   ([ADR-0008](../adr/0008-identity-oidc-and-scoped-api-keys.md), [ADR-0016](../adr/0016-keycloak-oidc-provider.md)).
 2. **Resolve scope from resources, not input**: load the target resource (or its parent workspace) with the
    caller's organization context. Not found or not visible → `404`.
 3. **Membership**: the caller is an active member of the resource's organization, or the key belongs to it.

@@ -23,7 +23,7 @@ Blocked on: [ADR-0010](../adr/0010-two-level-role-model.md) (roles), [ADR-0013](
 
 1. Migration runner and baseline schema: subjects, organizations, memberships, workspaces, workspace_memberships, api_keys, audit_events.
 2. Tenant-context unit of work (`SET LOCAL`) and RLS policies.
-3. Authentication: dev token issuer (local) and OIDC validation; API key verification.
+3. Authentication: OIDC validation against Keycloak ([ADR-0016](../adr/0016-keycloak-oidc-provider.md)); API key verification.
 4. Authorization service plus the role→permission table from the [authorization model](../security/authorization-model.md).
 5. Endpoints: organizations, members, workspaces, grants, API keys.
 6. Test suites: RLS (no context / wrong context / pool leak), cross-tenant negative tests, escalation tests.
