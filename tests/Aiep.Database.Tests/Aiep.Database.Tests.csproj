@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aiep.Migrator\Aiep.Migrator.csproj" />
+    <ProjectReference Include="..\..\src\Aiep.Infrastructure\Aiep.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

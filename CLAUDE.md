@@ -18,8 +18,8 @@ dotnet run --project src/Aiep.Api                 # http://localhost:5080
 
 ## Non-negotiable rules
 
-- **Tenant data access goes through the tenant-context unit of work only** (`set_config(..., true)` inside a
-  transaction). Never session-level `SET`. Never connect services as `aiep_migrator`. Never add `BYPASSRLS`.
+- **Tenant data access goes through the tenant-context unit of work only** (`TenantDatabase.ExecuteAsync`;
+  `set_config(..., true)` inside a transaction). Never session-level `SET`. Never connect services as `aiep_migrator`. Never add `BYPASSRLS`.
 - Tenant scope comes from authentication and resource rows, **never** from request bodies or queue payloads.
 - Unauthorized resource → **404**, not 403 (ADR-0015). 403 only when the caller can see the resource.
 - Every tenant-owned table: `organization_id`, composite FKs, RLS `ENABLE` **and** `FORCE`, and a negative test.

@@ -156,7 +156,10 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
    - Org-creation bootstrap is a chicken-and-egg problem (no tenant context exists yet). Handle it with a narrow
      `SECURITY DEFINER` function `aiep.create_organization(...)` that creates the org and the Owner membership atomically. Document why.
 
-3. **Tenant-context unit of work** (`Aiep.Infrastructure`).
+3. ✅ **Done 2026-11-10:** `TenantContext` (Application), `TenantDatabase` / `TenantSession` / `AiepDbContext`
+   (Infrastructure), 21 tests in `TenantDatabaseTests`. Use `TenantDatabase.ExecuteAsync` for every tenant access from
+   now on; raw SQL goes through `session.Connection` inside Infrastructure only. Original brief kept below.
+   **Tenant-context unit of work** (`Aiep.Infrastructure`).
    - One way in: `ITenantScope` / `IUnitOfWork` opens a connection and transaction and runs
      `select set_config('app.organization_id', $1, true), set_config('app.subject_id', $2, true)`. EF Core
      `DbContext` uses that connection and transaction. No other database access path for tenant data.

@@ -33,8 +33,19 @@
 
 ### 3. Tenant-context unit of work
 
-- [ ] `ITenantScope` / unit of work, EF Core mappings (no EF migrations)
-- [ ] Pool-size-1 alternating-tenant test through the unit of work; `aiep_api` can't `SET ROLE`
+- [x] `TenantDatabase.ExecuteAsync(TenantContext, work)`: the only access path; transaction-local `set_config`;
+  saves and commits, or rolls back on any exception ([data model](../data/data-model.md#how-services-reach-tenant-data))
+- [x] EF Core mappings for V0001 (Npgsql provider 10.0.3, snake_case columns, no EF migrations); `NpgsqlDataSource`
+  and `AiepDbContext` not resolvable from DI and not publicly constructible
+- [x] 21 tests in `TenantDatabaseTests`: no context → nothing through EF; own tenant only (even by id); EF insert for
+  another tenant rejected and not committed; commit and rollback semantics; pool of one connection alternating
+  A/B/none 30 times on the same backend; failed unit of work leaves no context; settings transaction-local on one
+  connection; pooled connection clean afterwards; `aiep_api` can't `SET ROLE`, `SET SESSION AUTHORIZATION`, gain
+  `BYPASSRLS`, disable/unforce RLS or drop policies; `row_security = off` errors instead of bypassing; EF model
+  columns match `information_schema` exactly
+- [x] Mutation check: session-level `set_config(..., false)` in `TenantDatabase` fails
+  `Tenant_settings_are_transaction_local_on_the_same_connection` (run by hand, 2026-11-10). Without that test the
+  regression was invisible, because every unit of work overwrites both settings and Npgsql's pool reset clears them.
 
 ### 4. Authentication
 

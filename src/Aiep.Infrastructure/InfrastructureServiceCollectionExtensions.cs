@@ -12,14 +12,16 @@ public static class InfrastructureServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         // Resolved lazily so hosts can start (and report liveness) before configuration is validated.
+        // NpgsqlDataSource and AiepDbContext are deliberately not registered: TenantDatabase is the only way in.
         services.AddSingleton(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
             var connectionString = configuration.GetConnectionString(ConnectionStringName)
                 ?? throw new InvalidOperationException(
                     $"Connection string 'ConnectionStrings:{ConnectionStringName}' is not configured.");
-            return NpgsqlDataSource.Create(connectionString);
+            return new AiepDataSource(NpgsqlDataSource.Create(connectionString));
         });
+        services.AddSingleton(sp => new TenantDatabase(sp.GetRequiredService<AiepDataSource>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 

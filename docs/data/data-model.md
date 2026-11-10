@@ -113,6 +113,29 @@ The worker gets write access to control-plane tables only when Phase 2 needs it,
 - **`organizations` has no slug.** A globally unique slug would reveal which names other tenants use.
 - **Workspace slugs** are lowercase DNS-label style (`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`), unique per organization.
 
+## How services reach tenant data
+
+One path only: [`TenantDatabase.ExecuteAsync`](../../src/Aiep.Infrastructure/Persistence/TenantDatabase.cs)
+([ADR-0006](../adr/0006-tenant-isolation-shared-database-rls.md), [ADR-0013](../adr/0013-data-access-and-migrations.md)).
+
+```csharp
+var workspaces = await tenantDatabase.ExecuteAsync(
+    TenantContext.ForOrganization(orgId, subjectId),          // from authentication or a claimed run row
+    (session, ct) => session.Db.Workspaces.ToListAsync(ct));
+```
+
+Each call takes a pooled connection, begins a transaction, runs
+`set_config('app.organization_id', …, true), set_config('app.subject_id', …, true)`, gives the callback an EF Core
+`AiepDbContext` bound to that connection and transaction, saves pending changes and commits. Any exception rolls back.
+
+- **Nothing else is reachable.** `NpgsqlDataSource` and `AiepDbContext` aren't registered in DI, and their
+  constructors aren't public. Raw Npgsql (hot paths, `SECURITY DEFINER` calls) uses the session's connection from
+  inside `Aiep.Infrastructure`.
+- **Two independent reasons a tenant setting can't leak through the pool:** the settings are transaction-local, and
+  Npgsql resets session state (`DISCARD ALL`) when a connection returns to the pool. Tests pin each one separately.
+- **EF mappings mirror the SQL schema**, with snake_case columns and no EF migrations. A test compares every mapped
+  table's columns and nullability with `information_schema`, so drift fails CI.
+
 ## Core tables (summary)
 
 | Table | Notes |

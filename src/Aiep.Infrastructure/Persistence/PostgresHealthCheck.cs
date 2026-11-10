@@ -3,7 +3,7 @@ using Npgsql;
 
 namespace Aiep.Infrastructure.Persistence;
 
-internal sealed class PostgresHealthCheck(NpgsqlDataSource dataSource) : IHealthCheck
+internal sealed class PostgresHealthCheck(AiepDataSource dataSource) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
