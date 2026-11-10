@@ -110,8 +110,8 @@ Verification results:
 
 Not done yet:
 
-- **No GitHub remote.** CI has never run. Ask the owner for the repo name and visibility before creating or pushing
-  (outward-facing action). `gh` is installed in WSL (its apt key was fixed); check `gh auth status`.
+- **GitHub:** public repo [Arihant1208/aiep](https://github.com/Arihant1208/aiep), `origin/main`. First CI run green on
+  2026-11-10 (build, format, all tests including Testcontainers on `ubuntu-latest`, compose validation, image builds).
 - No vulnerability scanning step in CI yet (Phase 1 item).
 
 ---

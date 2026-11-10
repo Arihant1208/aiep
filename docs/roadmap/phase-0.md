@@ -26,7 +26,7 @@
 
 - [x] GitHub Actions: restore, format check, build, test, compose validation, image build
 - [x] Dependabot for NuGet, Actions and Docker
-- [ ] Push to GitHub and get a green first run
+- [x] Push to GitHub and get a green first run: [Arihant1208/aiep](https://github.com/Arihant1208/aiep), public; first CI run green, including the Testcontainers database tests (2026-11-10)
 - [ ] Add dependency and image vulnerability scanning (for example `dotnet list package --vulnerable`, Trivy). Phase 1.
 
 ### Decisions and documents
