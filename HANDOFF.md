@@ -207,7 +207,12 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
    `GET /v1/me/permissions` (the debugging aid from ADR-0010). Prefixed opaque IDs; 404 concealment;
    Problem Details `code`s; audit events for every administrative action.
 
-7. **Security test suite** (Spec §6.5, the headline Phase 1 deliverable): two orgs, A and B; as A, try to read, update,
+7. ✅ **Done 2026-11-14:** `CrossTenantSecurityTests` (7 tests). The matrix test runs every control-plane endpoint
+   against org B with B's real ids, as A by token and by API key → all 404, and B is verified unchanged afterwards.
+   Plus escalation (Member can't self-promote; key can't exceed scope), revoked/expired/wrong-environment keys, and a
+   removed member's next request → 404. Threat model T1/T5/T6/T17 "verified by" updated. **Phase 1 exit criterion met.**
+   Original brief kept below.
+   **Security test suite** (Spec §6.5, the headline Phase 1 deliverable): two orgs, A and B; as A, try to read, update,
    delete, enumerate and guess IDs for every B resource through every endpoint, by token and by API key → always 404 and
    never modified. Plus role escalation, revoked and expired keys, a removed member's next request, a staging-prefixed key
    rejected in a production config.

@@ -92,7 +92,11 @@
 
 ### 7. Security test suite
 
-- [ ] Cross-tenant negative suite over every endpoint, by token and by API key (Spec §6.5)
+- [x] `CrossTenantSecurityTests`: two orgs A and B; as A, by token and by API key, every B endpoint with B's real ids
+  (read, mutate, enumerate, guess) → always 404, and B verified unchanged afterwards
+- [x] Escalation (a Member cannot promote themselves; a key cannot exceed its scope), revoked / expired /
+  wrong-environment keys, and a removed member's next request → 404
+- [x] Threat model T1, T5, T6, T17 "verified by" updated with the test names
 
 ### 8. Architecture tests
 
