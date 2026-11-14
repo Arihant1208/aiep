@@ -51,4 +51,22 @@ public interface IControlPlaneStore
     /// <summary>Remove a subject's workspace grant and audit it. False if there was no grant (404).</summary>
     Task<bool> RemoveWorkspaceGrantAsync(
         ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid subjectId, CancellationToken ct);
+
+    /// <summary>The organization's members, with their display data (visible to co-members).</summary>
+    Task<IReadOnlyList<MemberView>> ListMembersAsync(Guid organizationId, Guid subjectId, CancellationToken ct);
+
+    /// <summary>
+    /// Add an existing subject as a member with an organization role, and audit it. <paramref name="actorRole"/> gates
+    /// the Owner-protection rule (only an Owner may add an Owner).
+    /// </summary>
+    Task<MemberChangeResult> AddMemberAsync(
+        ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, OrgRole role, CancellationToken ct);
+
+    /// <summary>Change a member's organization role, enforcing Owner-protection and the last-Owner invariant, and audit it.</summary>
+    Task<MemberChangeResult> ChangeMemberRoleAsync(
+        ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, OrgRole role, CancellationToken ct);
+
+    /// <summary>Remove a member (workspace grants cascade), enforcing Owner-protection and the last-Owner invariant, and audit it.</summary>
+    Task<MemberChangeResult> RemoveMemberAsync(
+        ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, CancellationToken ct);
 }

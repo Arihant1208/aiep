@@ -214,6 +214,138 @@ internal sealed partial class ControlPlaneStore(TenantDatabase database, TimePro
             return true;
         }, ct);
 
+    public Task<IReadOnlyList<MemberView>> ListMembersAsync(Guid organizationId, Guid subjectId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, subjectId), async (session, token) =>
+        {
+            var members = await (
+                from m in session.Db.Memberships.AsNoTracking()
+                join s in session.Db.Subjects.AsNoTracking() on m.SubjectId equals s.Id
+                orderby m.CreatedAt
+                select new MemberView(m.SubjectId, m.OrgRole, m.Status, s.DisplayName, s.Email, m.CreatedAt))
+                .ToListAsync(token);
+            return (IReadOnlyList<MemberView>)members;
+        }, ct);
+
+    public Task<MemberChangeResult> AddMemberAsync(
+        ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, OrgRole role, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (TenantSession session, CancellationToken token) =>
+        {
+            if (role == OrgRole.Owner && actorRole != OrgRole.Owner)
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.OwnerProtected);
+            }
+
+            if (await session.Db.Memberships.AsNoTracking().AnyAsync(m => m.SubjectId == subjectId, token))
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.AlreadyMember);
+            }
+
+            // A not-yet-member subject is invisible under RLS, so existence can't be pre-checked; the FK is the only
+            // guard. Insert inside a savepoint so a missing subject (23503) becomes a clean 404 without poisoning the
+            // outer transaction.
+            await session.Transaction.SaveAsync("add_member", token);
+            try
+            {
+                await using var insert = new NpgsqlCommand(
+                    "INSERT INTO aiep.memberships (id, organization_id, subject_id, org_role, created_by) VALUES ($1, $2, $3, $4, $5)",
+                    session.Connection, session.Transaction);
+                insert.Parameters.Add(new NpgsqlParameter { Value = Guid.CreateVersion7() });
+                insert.Parameters.Add(new NpgsqlParameter { Value = organizationId });
+                insert.Parameters.Add(new NpgsqlParameter { Value = subjectId });
+                insert.Parameters.Add(new NpgsqlParameter { Value = role.ToDbValue() });
+                insert.Parameters.Add(new NpgsqlParameter { Value = actor.SubjectId });
+                await insert.ExecuteNonQueryAsync(token);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+            {
+                await session.Transaction.RollbackAsync("add_member", token);
+                return MemberChangeResult.Fail(MemberChangeOutcome.SubjectNotFound);
+            }
+
+            session.Db.AuditEvents.Add(Audit(actor, organizationId, null, "member.added", "subject", subjectId));
+            await session.Db.SaveChangesAsync(token);
+            return await LoadMemberAsync(session, subjectId, token);
+        }, ct);
+
+    public Task<MemberChangeResult> ChangeMemberRoleAsync(
+        ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, OrgRole role, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            var membership = await session.Db.Memberships.SingleOrDefaultAsync(m => m.SubjectId == subjectId, token);
+            if (membership is null || !Roles.TryParseOrgRole(membership.OrgRole, out var currentRole))
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.NotAMember);
+            }
+
+            // Only an Owner may change an Owner's role or promote someone to Owner.
+            if ((currentRole == OrgRole.Owner || role == OrgRole.Owner) && actorRole != OrgRole.Owner)
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.OwnerProtected);
+            }
+
+            if (currentRole == OrgRole.Owner && role != OrgRole.Owner && await IsLastOwnerAsync(session, subjectId, token))
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.LastOwner);
+            }
+
+            if (currentRole != role)
+            {
+                membership.OrgRole = role.ToDbValue();
+                membership.UpdatedAt = time.GetUtcNow();
+                session.Db.AuditEvents.Add(Audit(actor, organizationId, null, "member.role_changed", "subject", subjectId));
+                await session.Db.SaveChangesAsync(token);
+            }
+
+            return await LoadMemberAsync(session, subjectId, token);
+        }, ct);
+
+    public Task<MemberChangeResult> RemoveMemberAsync(
+        ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            var membership = await session.Db.Memberships.SingleOrDefaultAsync(m => m.SubjectId == subjectId, token);
+            if (membership is null)
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.NotAMember);
+            }
+
+            var isOwner = Roles.TryParseOrgRole(membership.OrgRole, out var role) && role == OrgRole.Owner;
+            if (isOwner && actorRole != OrgRole.Owner)
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.OwnerProtected);
+            }
+
+            if (isOwner && await IsLastOwnerAsync(session, subjectId, token))
+            {
+                return MemberChangeResult.Fail(MemberChangeOutcome.LastOwner);
+            }
+
+            session.Db.Memberships.Remove(membership); // workspace grants cascade (composite FK)
+            session.Db.AuditEvents.Add(Audit(actor, organizationId, null, "member.removed", "subject", subjectId));
+            await session.Db.SaveChangesAsync(token);
+            return new MemberChangeResult(MemberChangeOutcome.Ok, null);
+        }, ct);
+
+    private static async Task<bool> IsLastOwnerAsync(TenantSession session, Guid subjectId, CancellationToken ct)
+    {
+        var owners = await session.Db.Memberships.AsNoTracking()
+            .Where(m => m.OrgRole == "Owner" && m.Status == "active")
+            .Select(m => m.SubjectId)
+            .ToListAsync(ct);
+        return AuthorizationInvariants.WouldRemoveLastOwner(owners, subjectId);
+    }
+
+    private static async Task<MemberChangeResult> LoadMemberAsync(TenantSession session, Guid subjectId, CancellationToken ct)
+    {
+        var member = await (
+            from m in session.Db.Memberships.AsNoTracking()
+            join s in session.Db.Subjects.AsNoTracking() on m.SubjectId equals s.Id
+            where m.SubjectId == subjectId
+            select new MemberView(m.SubjectId, m.OrgRole, m.Status, s.DisplayName, s.Email, m.CreatedAt))
+            .SingleAsync(ct);
+        return new MemberChangeResult(MemberChangeOutcome.Ok, member);
+    }
+
     private static WorkspaceView ToView(Workspace workspace) =>
         new(workspace.Id, workspace.Slug, workspace.Name, workspace.Status, workspace.ArchivedAt, workspace.CreatedAt);
 

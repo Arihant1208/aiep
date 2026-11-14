@@ -27,6 +27,7 @@ var v1 = app.MapGroup("/v1");
 v1.MapMeEndpoints();
 v1.MapOrganizationEndpoints();
 v1.MapWorkspaceEndpoints();
+v1.MapMemberEndpoints();
 
 app.Run();
 
