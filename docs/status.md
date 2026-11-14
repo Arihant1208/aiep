@@ -3,8 +3,8 @@
 *What AIEP **is** right now — not the plan, the plan is in the [roadmap](roadmap/README.md). Updated at the end of each
 vertical slice. This page links to canonical docs rather than repeating them.*
 
-**As of:** 2026-11-14 · **Phase:** 2 **in progress** (task lifecycle and durable execution); Phase 1 complete · **Latest
-commit:** `Add the task-definition and run API (Phase 2, slice 5)`.
+**As of:** 2026-11-14 · **Phase:** 2 **complete** (task lifecycle and durable execution); Phase 3 next · **Latest
+commit:** `Prove durable execution across a worker crash (Phase 2, slice 6)`.
 
 ## In one paragraph
 
@@ -14,8 +14,10 @@ create and read organizations, manage members and their roles, create and archiv
 and issue, list and revoke API keys. Every request is authorized against the role model (org role ∪ workspace grant ∩
 key scope), a resource the caller can't see is concealed as 404, and every administrative action is audited. Tenant
 isolation is enforced in the database with row-level security underneath it all. It does **not yet** run any AI task:
-Phase 2 is under way, and its first slice has landed the task-execution schema (task definitions and immutable versions,
-runs with their queue state, attempts, idempotency keys), but no run is executed yet — the worker is still a placeholder.
+**Phase 2 is complete:** a caller can author a task definition and immutable versions, submit a run (idempotently), and
+the worker claims it across tenants, executes the handler against the deterministic fake provider, and persists exactly
+one terminal outcome — proven to survive a simulated worker crash (the reconciler recovers the abandoned run and a second
+worker finishes it). It still calls only the **fake** provider; the real Anthropic adapter is a later addition.
 
 ## What runs today
 
@@ -54,9 +56,9 @@ with the permission, status codes and audit action for each endpoint.
 | `Aiep.Domain.Tests` | 42 | Run state machine; retry classification and full-jitter backoff |
 | `Aiep.Application.Tests` | 72 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code); fake provider, completion handler and handler-registry allowlist |
 | `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
-| `Aiep.Database.Tests` | 115 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel) |
+| `Aiep.Database.Tests` | 118 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash |
 | `Aiep.Api.Tests` | 90 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, and the task-definition / run endpoints (authoring, idempotency, cancel), against real Postgres + Keycloak |
-| **Total** | **323** | |
+| **Total** | **326** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -67,11 +69,11 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-**Phase 1 is complete** ([checklist](roadmap/phase-1.md)). **Phase 2 is in progress**
-([checklist](roadmap/phase-2.md)): slice 1 landed the task-execution schema (V0002) with its isolation, privileges and
-the version-immutability trigger proven by tests. Still to come: the domain retry/lease model and ports, the PostgreSQL
-queue (`FOR UPDATE SKIP LOCKED`, leases, `LISTEN/NOTIFY`), the real worker loop and reconciler, the submit/definition
-API, and the headline proof — a worker killed mid-run recovers to exactly one terminal outcome (ADR-0005).
+**Phase 1 and Phase 2 are complete** ([Phase 2 checklist](roadmap/phase-2.md)): the exit criterion — submit → queue →
+execute → persist, surviving a simulated worker crash — is met and proven by tests, and ADR-0005's acceptance criterion
+is ticked. Next is **Phase 3: execution isolation and observability** ([roadmap](roadmap/README.md)) — every run
+traceable, measurable and cleaned up safely (worker spans linked to the stored `traceparent`, run artifacts / blob
+storage, retention) — and the real Anthropic provider adapter behind `IModelProvider` once budget guards exist.
 
 ## Keeping this page honest
 

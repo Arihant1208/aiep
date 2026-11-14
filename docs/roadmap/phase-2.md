@@ -76,9 +76,14 @@ Each slice is code + tests + doc updates, tested and pushed on its own.
 
 ### 6. Durability proof
 
-- [ ] The headline test: kill a worker mid-run → the reconciler recovers it → exactly one terminal outcome. Plus
-  retry/backoff, duplicate submission, and cancellation
-- [ ] Tick ADR-0005's acceptance criterion; update the threat model, [status](../status.md) and this checklist
+- [x] The headline test (`DurabilityTests`): submit → queue → execute → persist end to end; a worker crashes mid-run →
+  the reconciler recovers it → a second worker completes it → **exactly one terminal outcome**, with the crashed worker's
+  late settle discarded; and an idempotent resubmission returns the same run. Retry/backoff, dead-letter and cancellation
+  are covered by `RunExecutorTests`
+- [x] ADR-0005's acceptance criterion ticked; threat model T13, [status](../status.md) and this checklist updated
+
+**Phase 2 is complete.** The exit criterion — submit → queue → execute → persist, surviving a simulated worker crash —
+is met and proven by tests. Full suite 326 green.
 
 ## Deviations and decisions
 

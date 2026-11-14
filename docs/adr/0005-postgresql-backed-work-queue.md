@@ -75,4 +75,6 @@ impressive-sounding than "RabbitMQ" on a CV (the trade-off analysis is the portf
 ## Acceptance criteria
 
 - [x] Project owner agrees to deviate from the spec's RabbitMQ preference.
-- [ ] Phase 2 spike: claim/lease/heartbeat/recovery prototype with an integration test that kills a worker mid-run.
+- [x] Phase 2: claim/lease/heartbeat/recovery built (`claim_next_run`, `reconcile_expired_leases`, `PostgresRunQueue`,
+  `RunExecutor`) with an integration test that simulates a worker crashing mid-run and recovers to exactly one terminal
+  outcome (`DurabilityTests.A_worker_crash_mid_run_recovers_and_completes_exactly_once`), 2026-11-14.

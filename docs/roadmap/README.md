@@ -7,7 +7,7 @@ capability at a time, then harden it.*
 | --- | --- | --- | --- | --- |
 | [0](phase-0.md) | 1 | Architecture and foundations | Reproducible local environment; agreed architecture | **Complete** |
 | [1](phase-1.md) | 2–3 | Control plane and tenant security | Users access only resources authorized for their identity and scope | **Complete** (2026-11-14) |
-| [2](phase-2.md) | 4–5 | Task lifecycle and durable execution | Submit → queue → execute → persist works, including after a simulated worker crash | **In progress** |
+| [2](phase-2.md) | 4–5 | Task lifecycle and durable execution | Submit → queue → execute → persist works, including after a simulated worker crash | **Complete** (2026-11-14) |
 | 3 | 6–7 | Execution isolation and observability | Every run can be traced, measured and cleaned up safely | Not started |
 | 4 | 8–9 | Evaluation and cost governance | Compare two configurations on one dataset; explain quality/latency/cost trade-offs | Not started |
 | 5 | 10–12 | Cloud deployment and portfolio release | Repeatable deployment; defensible technical demo with raw benchmark evidence | Not started |
