@@ -50,6 +50,10 @@ public static class InfrastructureServiceCollectionExtensions
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<AiepDataSource>()));
         services.AddSingleton<IIdempotencyStore>(sp => new IdempotencyStore(
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<ITaskCatalogStore>(sp => new TaskCatalogStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IRunStore>(sp => new RunStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 

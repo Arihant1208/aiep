@@ -2,6 +2,7 @@ using Aiep.Api.Authentication;
 using Aiep.Api.Http;
 using Aiep.Application.Authorization;
 using Aiep.Application.ControlPlane;
+using Aiep.Application.Ids;
 
 namespace Aiep.Api.Endpoints;
 
@@ -60,6 +61,34 @@ internal static class EndpointAuth
         AuthorizationFailure.NotAMember => Problems.NotFound(),
         _ => Problems.Forbidden(),
     };
+
+    /// <summary>
+    /// Shared prelude for workspace-scoped resources (task definitions, runs): parse the ids, confirm the caller is a
+    /// member and the workspace exists and is visible. On failure returns a 404 (concealment). On success returns the
+    /// resolved subject and the organization/workspace ids; the caller then gates the specific permission with
+    /// <see cref="CheckWorkspace"/>.
+    /// </summary>
+    public static async Task<(AuthorizationSubject? Subject, Guid Organization, Guid Workspace, IResult? Failure)>
+        ResolveWorkspaceAsync(
+            string organizationId, string workspaceId, HttpContext http, IControlPlaneStore store, CancellationToken ct)
+    {
+        if (!ResourceId.TryParse(ResourceId.Organization, organizationId, out var organization)
+            || !ResourceId.TryParse(ResourceId.Workspace, workspaceId, out var workspace))
+        {
+            return (null, default, default, Problems.NotFound());
+        }
+
+        var subject = await ResolveAsync(http, organization, store, ct);
+        if (subject is null || !subject.IsActiveMember)
+        {
+            return (null, default, default, Problems.NotFound());
+        }
+
+        var found = await store.GetWorkspaceAsync(organization, subject.SubjectId, workspace, ct);
+        return found is null
+            ? (null, default, default, Problems.NotFound())
+            : (subject, organization, workspace, null);
+    }
 
     /// <summary>Whether the caller has any permission in the workspace (so the workspace is visible to them).</summary>
     public static bool CanSeeWorkspace(AuthorizationSubject subject, Guid workspaceId) =>

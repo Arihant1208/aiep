@@ -4,7 +4,7 @@
 vertical slice. This page links to canonical docs rather than repeating them.*
 
 **As of:** 2026-11-14 · **Phase:** 2 **in progress** (task lifecycle and durable execution); Phase 1 complete · **Latest
-commit:** `Make the worker execute runs (Phase 2, slice 4)`.
+commit:** `Add the task-definition and run API (Phase 2, slice 5)`.
 
 ## In one paragraph
 
@@ -36,7 +36,7 @@ Full local stack: [`docker compose --profile app up -d --build`](development/loc
 - **Domain** — `TaskRunStatus` + `TaskRunTransitions` state machine (single source of truth; [task lifecycle](architecture/task-lifecycle.md)); `ErrorCategory` retry classification and `RetryBackoff` / `RetryPolicy` (full-jitter exponential backoff).
 - **Application** — `TenantContext`; identity primitives (API-key format/hashing, `ExternalIdentity`); resource-ID encoding ([`ResourceId`](../src/Aiep.Application/Ids/ResourceId.cs)); the [authorization model](security/authorization-model.md) (`Permission`, `RolePermissions`, `AuthorizationSubject`, `IAuthorizationService`, `AuthorizationInvariants`); the control-plane port `IControlPlaneStore`; the execution ports `IModelProvider` (with the deterministic `FakeModelProvider`, ADR-0009), `ITaskHandler` / `IHandlerRegistry` allowlist and the `completion` handler (ADR-0007); the queue ports `IRunQueue` and `IIdempotencyStore` (ADR-0005, ADR-0015); `RunExecutor`, the worker's execution orchestration.
 - **Infrastructure** — `TenantDatabase` unit of work (the **only** path to tenant data: transaction-local `set_config`, EF `AiepDbContext` bound to that connection); API-key store, subject directory and `ControlPlaneStore` over the unit of work and `SECURITY DEFINER` lookups ([ADR-0017](adr/0017-pre-tenant-operations-security-definer.md)); `PostgresRunQueue` and the idempotency store over the V0003 `claim_next_run` / `reconcile_expired_leases` definer functions.
-- **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)); the `/v1` [control-plane endpoints](api/control-plane.md) (organizations, members, workspaces, grants, API keys, `/me`, `/me/permissions`) with `EndpointAuth` (resolve + authorize) and `CodedProblem`; Problem Details with stable `code`s; correlation-id and credentials-in-URL middleware.
+- **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)); the `/v1` [control-plane endpoints](api/control-plane.md) (organizations, members, workspaces, grants, API keys, `/me`, `/me/permissions`) with `EndpointAuth` (resolve + authorize) and `CodedProblem`; Problem Details with stable `code`s; correlation-id and credentials-in-URL middleware. The [task-execution API](api/task-execution.md): task-definition and version authoring and runs (`POST …/runs` with `Idempotency-Key`, get, list, cancel), workspace-scoped with result-read gating.
 - **Worker** — `RunWorker` loop (claim → execute → settle, with LISTEN/NOTIFY wake) and `ReconcilerService` (expired-lease recovery), hosting `RunExecutor`.
 - **Data** — V0001: `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events`. V0002: `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys`. V0003: the `claim_next_run` and `reconcile_expired_leases` queue functions ([data model](data/data-model.md)).
 
@@ -55,8 +55,8 @@ with the permission, status codes and audit action for each endpoint.
 | `Aiep.Application.Tests` | 72 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code); fake provider, completion handler and handler-registry allowlist |
 | `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
 | `Aiep.Database.Tests` | 115 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel) |
-| `Aiep.Api.Tests` | 80 | OIDC + API-key auth, control-plane endpoints, and the cross-tenant security suite, against real Postgres + Keycloak |
-| **Total** | **313** | |
+| `Aiep.Api.Tests` | 90 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, and the task-definition / run endpoints (authoring, idempotency, cancel), against real Postgres + Keycloak |
+| **Total** | **323** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 

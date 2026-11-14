@@ -11,6 +11,8 @@ public static class ResourceId
     public const string Subject = "sub";
     public const string ApiKey = "key";
     public const string Membership = "mem";
+    public const string TaskDefinition = "def";
+    public const string Run = "run";
 
     public static string Format(string prefix, Guid id) => $"{prefix}_{CrockfordBase32.Encode128(id)}";
 

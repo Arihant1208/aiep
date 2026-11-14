@@ -66,9 +66,13 @@ Each slice is code + tests + doc updates, tested and pushed on its own.
 
 ### 5. API
 
-- [ ] Task-definition endpoints (create, publish a version, list, get); `POST …/runs` with `Idempotency-Key`;
-  get / list / cancel a run. 404 concealment, authorization and audit as in Phase 1
-- [ ] Endpoint + idempotency tests (same key + payload → same run; same key + different payload → 409)
+- [x] Task-definition endpoints (create, create a draft version, publish, list, get) with the handler allowlist enforced
+  at authoring time; workspace-scoped permissions (`definitions:read`/`write`), 404 concealment, per-mutation audit
+- [x] Run endpoints: `POST …/runs` with the `Idempotency-Key` header (atomic run + idempotency insert, same-key/same-payload
+  → same run, different payload → 409 `idempotency.conflict`); get / list / cancel. The result (`output`) is returned only
+  to callers with `runs:read_result`; cancellation is immediate for pending runs, flagged for running ones
+- [x] Endpoint tests for the catalog (authoring, publish, allowlist, viewer-read-not-write, concealment) and runs
+  (acceptance, idempotency same/different, unpublished guard, cancel, viewer-cannot-submit). Full suite 323 green
 
 ### 6. Durability proof
 
