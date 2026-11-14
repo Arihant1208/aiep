@@ -3,8 +3,9 @@ using DotNet.Testcontainers.Configurations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
+using Xunit;
 
-namespace Aiep.Database.Tests;
+namespace Aiep.Testing;
 
 /// <summary>
 /// One PostgreSQL 17 container per test run, initialised with the real <c>db/init/01-roles.sh</c> and migrated with
@@ -102,10 +103,4 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         throw new InvalidOperationException("Could not find the repository root (Aiep.slnx).");
     }
-}
-
-[CollectionDefinition(Name)]
-public sealed class PostgresCollection : ICollectionFixture<PostgresFixture>
-{
-    public const string Name = "postgres";
 }

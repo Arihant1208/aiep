@@ -41,6 +41,7 @@ The containerised API listens on `http://localhost:8080`.
 | Jaeger | http://localhost:16686 | Traces |
 | Prometheus | http://localhost:9090 | Metrics |
 | Grafana | http://localhost:3000 | Anonymous admin, **local only** |
+| Keycloak | http://localhost:8081 (admin console: `admin` / `keycloak_local_dev`) | Realm `aiep` from `deploy/keycloak/aiep-realm.json`, users `alice` / `alice-local-dev`, `bob` / `bob-local-dev`. Dev mode takes 1–3 minutes to start ([ADR-0016](../adr/0016-keycloak-oidc-provider.md)) |
 
 ## Database roles
 
@@ -51,6 +52,15 @@ The containerised API listens on `http://localhost:8080`.
 | `aiep_worker` | Worker | `NOBYPASSRLS`, not owner |
 
 Default local passwords are in `.env.example`. They are synthetic and local-only. Copy it to `.env` to override.
+
+## Authentication locally
+
+The API validates tokens from the Compose Keycloak and API keys peppered with `Authentication:ApiKeys:Pepper`
+(synthetic default in `appsettings.Development.json` and `.env.example`). Details: [authentication](../security/authentication.md).
+The realm has no password-grant client on purpose, so there is no `curl` recipe for a token. Use API keys for manual
+testing once the key endpoints exist (Phase 1 step 6).
+
+`Aiep.Api.Tests` starts its own PostgreSQL and Keycloak containers. The first run pulls the Keycloak image (~500 MB).
 
 ## Secrets
 

@@ -49,9 +49,20 @@
 
 ### 4. Authentication
 
-- [ ] Keycloak in Compose with `deploy/keycloak/aiep-realm.json`; JWT bearer validation; `(iss, sub)` → subject
-- [ ] API keys: generation, peppered hash, constant-time compare, expiry, revocation, throttled `last_used_at`
-- [ ] Tests promised by ADR-0016: Keycloak roles grant nothing; unknown signing key rejected
+- [x] Keycloak 26.8.2 in Compose with `deploy/keycloak/aiep-realm.json` (clients `aiep-api`, `aiep-web`, `aiep-cli`
+  with PKCE; synthetic users); API container validates `iss=localhost:8081` while fetching keys from `keycloak:8080`
+- [x] JWT bearer validation (issuer, audience, RS256/ES256 signature, lifetime); `(iss, sub)` → subject via
+  `resolve_subject` with a 5-minute cache; principal rebuilt with AIEP claims only
+- [x] API keys: Crockford base32 format, HMAC-SHA-256 with pepper, constant-time compare, environment check before
+  lookup, expiry, revocation, owner's active membership, `last_used_at` at most once a minute; keys in URLs refused
+- [x] Fallback policy: everything except health requires authentication; Problem Details carry `code` and `correlationId`
+- [x] `GET /v1/me` with ADR-0015 prefixed IDs (`ResourceId`)
+- [x] Tests promised by ADR-0016: Keycloak roles grant nothing; unknown signing key rejected. Plus unsigned, tampered,
+  wrong-audience (mutation-checked) and other-realm tokens; 8 API key rejection cases; keys in URLs
+  ([authentication](../security/authentication.md#tests)). New test projects: `Aiep.Application.Tests` (47 unit
+  tests), `Aiep.Testing` (shared fixtures); `Aiep.Api.Tests` now runs against real PostgreSQL and Keycloak
+- [x] Bug found by the unit tests: .NET regex `$` matches before a trailing newline, so `"<key>\n"` parsed as valid.
+  Key patterns now end in `\z`
 
 ### 5. Authorization
 
@@ -81,3 +92,6 @@
 | Local token issuer | None; Keycloak everywhere instead of ADR-0008's dev-only issuer | ADR-0016 |
 | Pre-tenant access | Three `SECURITY DEFINER` functions; definer policies scoped `TO aiep_migrator` | ADR-0017 (Proposed) |
 | ID generation | Application-generated UUIDv7 (PostgreSQL 17 has no `uuidv7()`) | [Data model](../data/data-model.md) |
+| Public ID encoding | `prefix_` + 26 uppercase Crockford base32 chars (big-endian UUID) | [Authentication](../security/authentication.md#resource-ids-in-responses) |
+| Unknown routes | Anonymous → 401 (no route probing); authenticated → 404 | [Authentication](../security/authentication.md) |
+| Test-only Keycloak objects | Password-grant client and decoy admin created by the test fixture, not in the realm file | [Keycloak README](../../deploy/keycloak/README.md) |

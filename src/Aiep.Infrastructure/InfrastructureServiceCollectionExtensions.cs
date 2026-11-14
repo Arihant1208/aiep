@@ -1,3 +1,5 @@
+using Aiep.Application.Identity;
+using Aiep.Infrastructure.Identity;
 using Aiep.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +24,8 @@ public static class InfrastructureServiceCollectionExtensions
             return new AiepDataSource(NpgsqlDataSource.Create(connectionString));
         });
         services.AddSingleton(sp => new TenantDatabase(sp.GetRequiredService<AiepDataSource>()));
+        services.AddSingleton<ISubjectDirectory>(sp => new SubjectDirectory(sp.GetRequiredService<TenantDatabase>()));
+        services.AddSingleton<IApiKeyStore>(sp => new ApiKeyStore(sp.GetRequiredService<TenantDatabase>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 

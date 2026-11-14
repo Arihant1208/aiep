@@ -10,7 +10,7 @@ what we decided against, and what we still have to decide.
 | [Decisions (ADRs)](adr/README.md) | One page per significant decision: context, choice, trade-offs, alternatives | [ADR index](adr/README.md) |
 | [Product](product/vision-and-scope.md) | Product promise, personas, MVP scope and non-goals | [Vision and scope](product/vision-and-scope.md) |
 | [Architecture](architecture/overview.md) | Components, deployable units, module boundaries, flows | [Overview](architecture/overview.md), [Task lifecycle](architecture/task-lifecycle.md) |
-| [Security](security/threat-model.md) | Threat model, authorization model | [Threat model](security/threat-model.md), [Authorization](security/authorization-model.md) |
+| [Security](security/threat-model.md) | Threat model, authentication, authorization model | [Threat model](security/threat-model.md), [Authentication](security/authentication.md), [Authorization](security/authorization-model.md) |
 | [Data](data/data-model.md) | Entities, ownership invariants, tenancy enforcement | [Data model](data/data-model.md) |
 | [Development](development/local-setup.md) | Running the stack locally, conventions | [Local setup](development/local-setup.md) |
 | [Roadmap](roadmap/README.md) | Phases, exit criteria, progress | [Phase 0](roadmap/phase-0.md) |

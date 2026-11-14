@@ -9,11 +9,14 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Testcontainers.Keycloak" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Aiep.Testing" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aiep.Api\Aiep.Api.csproj" />
+    <ProjectReference Include="..\Aiep.Testing\Aiep.Testing.csproj" />
   </ItemGroup>
 </Project>

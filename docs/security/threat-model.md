@@ -44,7 +44,7 @@ TB4: model output re-entering the system. TB5: privileged human access.
 | T2 | **Tenant context leak across pooled connections** | TB2 | `SET LOCAL` in transaction only; single unit-of-work path | `TenantDatabaseTests.Pool_of_one_alternating_tenants_never_carries_context_over`, `…Pool_of_one_a_failed_unit_of_work_leaves_no_context_behind`, `…Tenant_settings_are_transaction_local_on_the_same_connection` (mutation-checked), `…Pool_of_one_the_connection_carries_no_tenant_setting_after_a_unit_of_work`, `TenantIsolationTests.Tenant_context_does_not_outlive_its_transaction_on_a_reused_connection` |
 | T3 | Missing tenant context returns rows | TB2 | Policies compare to `current_setting(..., true)`; NULL matches nothing | `TenantIsolationTests.Without_tenant_context_every_tenant_table_returns_no_rows` (catalog-driven, every tenant table, both service roles) |
 | T4 | Spoofed tenant in body or queue payload | TB1 | Scope derived from auth and resource rows only; worker uses claimed row | Tests posting a foreign `organizationId` |
-| T5 | Stolen or leaked API key | TB1 | Prefix for leak scanning; hashed at rest; scoped; expiry; instant revocation; `last_used_at` | Revoked/expired key tests |
+| T5 | Stolen or leaked API key | TB1 | Prefix for leak scanning; hashed at rest; scoped; expiry; instant revocation; `last_used_at` | `ApiKeyAuthenticationTests.Rejected_keys_all_get_the_same_401` (revoked, expired, wrong secret, unknown, owner removed/suspended, …), `…A_removed_owner_loses_access_on_the_next_request`, `…Credentials_in_the_url_are_refused_even_with_a_valid_header` |
 | T6 | Privilege escalation through role or key management | TB1 | Key scope ⊆ creator permissions, re-checked on use; only Owner can grant Owner; audited | Escalation tests |
 | T7 | **Prompt injection causing data access or actions** | TB4 | Authorization outside the model; handlers have no tools in the MVP; output validated as data | Injection fixtures in the handler test suite |
 | T8 | Malicious output (XSS in UI, CSV injection in exports) | TB4 | Output treated as untrusted; encode in UI; escape exports | UI and export tests |
@@ -56,7 +56,8 @@ TB4: model output re-entering the system. TB5: privileged human access.
 | T14 | Operator over-access to tenant data | TB5 | No standing access; time-bound break-glass; audited | Audit event tests |
 | T15 | Audit log tampering | TB2 | Services have INSERT/SELECT only on `audit_events`; later hash chaining | `PrivilegeAndBootstrapTests.Services_cannot_update_or_delete_audit_events`, `…Even_the_owner_cannot_update_audit_events_because_of_the_trigger` |
 | T16 | Supply-chain compromise | build | Pinned packages and images; Dependabot; image scanning; SBOM | CI |
-| T17 | Staging/production credential crossover | env | Environment-prefixed keys; separate identities and resources | Key-environment test |
+| T18 | Forged, tampered or mis-addressed bearer token; IdP roles trusted for authorization | TB1 | JWKS signature check (RS256/ES256 only), exact issuer and audience, lifetime; principal rebuilt with AIEP claims only ([authentication](authentication.md)) | `OidcAuthenticationTests` (unknown key, unsigned, tampered, wrong audience, other realm, decoy admin role) |
+| T17 | Staging/production credential crossover | env | Environment-prefixed keys; separate identities and resources | `ApiKeyAuthenticatorTests.A_key_for_another_environment_is_rejected_without_a_lookup`, `…A_stored_key_from_another_environment_is_rejected_even_with_a_matching_secret`, `ApiKeyAuthenticationTests.Rejected_keys_all_get_the_same_401(other-environment)` |
 
 ## Accepted risks (MVP)
 

@@ -64,17 +64,18 @@ public static class ServiceDefaultsExtensions
         return builder;
     }
 
+    // Health endpoints are anonymous: orchestrators probe them without credentials. They reveal only up/down.
     public static WebApplication MapServiceHealthChecks(this WebApplication app)
     {
         app.MapHealthChecks("/health/live", new HealthCheckOptions
         {
             Predicate = registration => registration.Tags.Contains(LiveTag),
-        });
+        }).AllowAnonymous();
 
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = registration => registration.Tags.Contains(ReadyTag),
-        });
+        }).AllowAnonymous();
 
         return app;
     }

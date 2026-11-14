@@ -61,13 +61,15 @@ public sealed class HostSmokeTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task Unknown_routes_return_problem_details()
+    public async Task Anonymous_requests_to_unknown_routes_get_401_problem_details()
     {
+        // The fallback policy also covers unmatched routes, so anonymous callers can't probe which routes exist.
+        // Authenticated callers get 404 (ApiKeyAuthenticationTests.Authenticated_unknown_routes_return_404_problem_details).
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/v1/does-not-exist");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 }

@@ -168,7 +168,11 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
      org → 0 rows and inserts rejected by `WITH CHECK`; right org → rows; **pool size 1, alternating tenants →
      no carry-over**; `aiep_api` can't `SET ROLE`/bypass; composite FK rejects a cross-tenant child.
 
-4. **Authentication.**
+4. ✅ **Done 2026-11-10:** Keycloak in Compose, JWT + API key authentication, `GET /v1/me`, 32 API tests against real
+   Postgres + Keycloak, 47 Application unit tests. See [docs/security/authentication.md](docs/security/authentication.md).
+   Follow-ups: Npgsql logs `libgssapi_krb5.so.2` not found at connect in the container (harmless; consider
+   `GSS Encryption Mode=Disable`); pepper rotation; auth failure rate limiting. Original brief kept below.
+   **Authentication.**
    - Keycloak service and realm import in `docker-compose.yml`; JWT bearer validation in the API; map
      `(iss, sub)` → `subjects` row (create on first login).
    - API keys per ADR-0008: generation, peppered SHA-256 verification (pepper from configuration / user-secrets

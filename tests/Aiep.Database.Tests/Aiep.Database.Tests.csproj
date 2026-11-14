@@ -9,13 +9,13 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="coverlet.collector" />
-    <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Aiep.Testing" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Aiep.Migrator\Aiep.Migrator.csproj" />
+    <ProjectReference Include="..\Aiep.Testing\Aiep.Testing.csproj" />
     <ProjectReference Include="..\..\src\Aiep.Infrastructure\Aiep.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

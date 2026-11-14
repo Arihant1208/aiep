@@ -1,13 +1,13 @@
 using System.Security.Cryptography;
 using Npgsql;
 
-namespace Aiep.Database.Tests;
+namespace Aiep.Testing;
 
 /// <summary>
 /// Test-only access helper: opens a connection as a service role, starts a transaction and sets the tenant context
 /// with set_config(..., true), the same rule the production unit of work (Phase 1 step 3) must follow.
 /// </summary>
-internal sealed class TenantDb(PostgresFixture db)
+public sealed class TenantDb(PostgresFixture db)
 {
     public async Task<T> RunAsync<T>(
         string role, Guid? organizationId, Guid? subjectId, Func<NpgsqlConnection, Task<T>> work)
@@ -78,9 +78,9 @@ internal sealed class TenantDb(PostgresFixture db)
 }
 
 /// <summary>One organization with its owner and one row in every tenant-owned table.</summary>
-internal sealed record Tenant(Guid OrganizationId, Guid OwnerId, Guid WorkspaceId, Guid ApiKeyId, string KeyId);
+public sealed record Tenant(Guid OrganizationId, Guid OwnerId, Guid WorkspaceId, Guid ApiKeyId, string KeyId);
 
-internal static class Seed
+public static class Seed
 {
     public static async Task<Guid> SubjectAsync(TenantDb tdb, string name)
     {

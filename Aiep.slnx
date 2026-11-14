@@ -9,8 +9,10 @@
     <Project Path="src/Aiep.Worker/Aiep.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Aiep.Application.Tests/Aiep.Application.Tests.csproj" />
     <Project Path="tests/Aiep.Database.Tests/Aiep.Database.Tests.csproj" />
     <Project Path="tests/Aiep.Domain.Tests/Aiep.Domain.Tests.csproj" />
     <Project Path="tests/Aiep.Api.Tests/Aiep.Api.Tests.csproj" />
+    <Project Path="tests/Aiep.Testing/Aiep.Testing.csproj" />
   </Folder>
 </Solution>
