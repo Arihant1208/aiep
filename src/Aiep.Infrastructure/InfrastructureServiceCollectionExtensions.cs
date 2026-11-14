@@ -5,6 +5,7 @@ using Aiep.Application.Execution.Handlers;
 using Aiep.Application.Execution.Providers;
 using Aiep.Application.Identity;
 using Aiep.Infrastructure.ControlPlane;
+using Aiep.Infrastructure.Execution;
 using Aiep.Infrastructure.Identity;
 using Aiep.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
@@ -43,6 +44,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IModelProvider, FakeModelProvider>();
         services.AddSingleton<ITaskHandler, CompletionHandler>();
         services.AddSingleton<IHandlerRegistry>(sp => new HandlerRegistry(sp.GetServices<ITaskHandler>()));
+
+        // The PostgreSQL-backed queue and the idempotency store (ADR-0005, ADR-0015).
+        services.AddSingleton<IRunQueue>(sp => new PostgresRunQueue(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<AiepDataSource>()));
+        services.AddSingleton<IIdempotencyStore>(sp => new IdempotencyStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 

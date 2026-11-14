@@ -83,6 +83,18 @@ public sealed class PostgresFixture : IAsyncLifetime
         return name;
     }
 
+    /// <summary>
+    /// A new, fully migrated database, isolated from the shared <c>aiep</c> one. Used by cross-tenant tests (such as the
+    /// work queue) that would otherwise see every other test's rows.
+    /// </summary>
+    public async Task<string> CreateMigratedDatabaseAsync()
+    {
+        var name = await CreateEmptyDatabaseAsync();
+        var runner = new MigrationRunner(ConnectionString("aiep_migrator", name), NullLogger<MigrationRunner>.Instance);
+        await runner.RunAsync(MigrationDiscovery.Load(MigrationsDirectory));
+        return name;
+    }
+
     private async Task ExecuteAsSuperuserAsync(string sql)
     {
         await using var connection = new NpgsqlConnection(ConnectionString("postgres", "postgres"));

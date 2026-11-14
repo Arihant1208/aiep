@@ -84,6 +84,7 @@ instead of raising a cast error.
 | --- | --- |
 | [`V0001__tenancy_baseline.sql`](../../db/migrations/V0001__tenancy_baseline.sql) | `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events` |
 | [`V0002__task_execution.sql`](../../db/migrations/V0002__task_execution.sql) | `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys` |
+| [`V0003__queue_operations.sql`](../../db/migrations/V0003__queue_operations.sql) | (no tables) `claim_next_run`, `reconcile_expired_leases` `SECURITY DEFINER` functions + their definer RLS policies |
 
 `aiep.schema_migrations` (version, name, checksum, applied time) is created by `Aiep.Migrator` itself and is readable
 only by `aiep_migrator`.
@@ -141,6 +142,18 @@ Nothing here is ever deleted by a service.
   distinct UUIDv7 values, so a single column disambiguates callers without a `caller_type`.
 - **The worker never INSERTs `task_runs`** (only the API submits) and **never writes definitions**; it has UPDATE on
   `task_runs` for claim/heartbeat/finish and INSERT/UPDATE on `task_run_attempts`. Attempts are worker-only.
+
+### Choices made while building V0003 (Phase 2)
+
+- **Cross-tenant claim and reconcile are `SECURITY DEFINER` functions** (`claim_next_run`, `reconcile_expired_leases`,
+  granted to `aiep_worker` only), because a worker has no tenant context when it looks across organizations for work.
+  They run as their owner `aiep_migrator`, which `FORCE` RLS still binds, so each queue table gets a
+  `definer_queue_*` policy granting that owner full access — the same pattern as V0001's `definer_identity_resolution`.
+  Everything else (enqueue, heartbeat, settle) runs under the ordinary tenant unit of work with the run's organization.
+- **`claim_next_run` uses `FOR UPDATE OF r SKIP LOCKED`** so concurrent workers take different runs and never block each
+  other, and promotes a due `RetryWait` run through `Queued` to `Running` in one atomic claim.
+- **Lease expiry has no extra backoff:** the reconciler returns an expired run to the queue eligible immediately, since
+  the lease timeout already provided the delay. Handler-reported retryable failures use the Domain's jittered backoff.
 
 ## How services reach tenant data
 

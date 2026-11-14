@@ -7,12 +7,12 @@ namespace Aiep.Testing;
 /// Test-only access helper: opens a connection as a service role, starts a transaction and sets the tenant context
 /// with set_config(..., true), the same rule the production unit of work (Phase 1 step 3) must follow.
 /// </summary>
-public sealed class TenantDb(PostgresFixture db)
+public sealed class TenantDb(PostgresFixture db, string database = "aiep")
 {
     public async Task<T> RunAsync<T>(
         string role, Guid? organizationId, Guid? subjectId, Func<NpgsqlConnection, Task<T>> work)
     {
-        await using var connection = new NpgsqlConnection(db.ConnectionString(role));
+        await using var connection = new NpgsqlConnection(db.ConnectionString(role, database));
         await connection.OpenAsync();
         await using var transaction = await connection.BeginTransactionAsync();
         await using (var context = new NpgsqlCommand(
@@ -157,15 +157,16 @@ public static class Seed
                      input_schema, output_schema, handler_type, handler_version, model_provider, model_name,
                      published_at, created_by)
                 VALUES ($1, $2, $3, $4, 1, 'published',
-                        '{}'::jsonb, '{}'::jsonb, 'echo', '1', 'fake', 'fake-1', now(), $5)
+                        '{}'::jsonb, '{}'::jsonb, 'completion', '1', 'fake', 'fake-1', now(), $5)
                 """,
                 version, org, workspace, definition, owner);
+            // Seeded in a terminal state so it never sits in the global claim queue for cross-tenant queue tests.
             await TenantDb.ExecuteAsync(c,
                 """
                 INSERT INTO aiep.task_runs
-                    (id, organization_id, workspace_id, task_definition_version_id, status, max_attempts,
-                     input, next_attempt_at, created_by)
-                VALUES ($1, $2, $3, $4, 'Queued', 3, '{}'::jsonb, now(), $5)
+                    (id, organization_id, workspace_id, task_definition_version_id, status, attempt_count, max_attempts,
+                     input, output, completed_at, created_by)
+                VALUES ($1, $2, $3, $4, 'Succeeded', 1, 3, '{}'::jsonb, '{}'::jsonb, now(), $5)
                 """,
                 run, org, workspace, version, owner);
             await TenantDb.ExecuteAsync(c,
@@ -182,8 +183,8 @@ public static class Seed
         await tdb.RunAsync("aiep_worker", org, owner, c => TenantDb.ExecuteAsync(c,
             """
             INSERT INTO aiep.task_run_attempts
-                (id, organization_id, workspace_id, run_id, attempt_number, status, worker_id)
-            VALUES ($1, $2, $3, $4, 1, 'running', 'seed')
+                (id, organization_id, workspace_id, run_id, attempt_number, status, worker_id, ended_at)
+            VALUES ($1, $2, $3, $4, 1, 'succeeded', 'seed', now())
             """,
             Guid.CreateVersion7(), org, workspace, run));
 

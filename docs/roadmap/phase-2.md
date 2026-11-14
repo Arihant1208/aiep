@@ -42,13 +42,18 @@ Each slice is code + tests + doc updates, tested and pushed on its own.
 
 ### 3. Queue (port + Infrastructure)
 
-- [ ] `IRunQueue` port (claim, heartbeat, settle, reconcile) over the tenant unit of work
-- [ ] PostgreSQL queue: the cross-tenant claim and reconcile run through `SECURITY DEFINER` functions (new migration),
-  because a worker has no tenant context when it claims; claim uses `FOR UPDATE SKIP LOCKED`, promotes due
-  `RetryWait` → `Queued`, sets the lease and creates the attempt atomically; heartbeat and settle are conditional
-  updates (`WHERE id = @id AND status = @expected AND lease_owner = @worker`)
-- [ ] `LISTEN/NOTIFY` on enqueue with polling fallback; idempotency store
-- [ ] Queue contract tests, including concurrent claims never double-claiming a run
+- [x] `IRunQueue` port (enqueue, claim, heartbeat, settle, reconcile, wait-for-signal) and `IIdempotencyStore`, over the
+  tenant unit of work
+- [x] PostgreSQL queue (`PostgresRunQueue`): cross-tenant claim and reconcile run through the V0003 `SECURITY DEFINER`
+  functions (`claim_next_run`, `reconcile_expired_leases`), because a worker has no tenant context when it claims; claim
+  uses `FOR UPDATE OF r SKIP LOCKED`, promotes a due `RetryWait` through `Queued` to `Running` and creates the attempt
+  atomically; heartbeat and settle are conditional updates (`WHERE id = @id AND status = 'Running' AND lease_owner = @worker`),
+  so a late or duplicate attempt cannot overwrite the result
+- [x] `LISTEN/NOTIFY` on enqueue (`WaitForEnqueueSignalAsync`, polling fallback in the worker loop); idempotency store
+  (SHA-256 key/payload hashes, `ON CONFLICT DO NOTHING` for the submission race)
+- [x] Queue contract tests in an isolated migrated database: enqueue/claim/heartbeat/settle (incl. at-most-one terminal),
+  retry re-claim, reconcile recover + dead-letter, concurrent claims never double-claim, API role cannot claim/reconcile,
+  NOTIFY wakes a waiter, idempotency mapping. Full suite 307 green
 
 ### 4. Worker
 
