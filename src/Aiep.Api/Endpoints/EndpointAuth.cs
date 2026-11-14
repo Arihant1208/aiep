@@ -60,4 +60,23 @@ internal static class EndpointAuth
         AuthorizationFailure.NotAMember => Problems.NotFound(),
         _ => Problems.Forbidden(),
     };
+
+    /// <summary>Whether the caller has any permission in the workspace (so the workspace is visible to them).</summary>
+    public static bool CanSeeWorkspace(AuthorizationSubject subject, Guid workspaceId) =>
+        subject.EffectiveInWorkspace(workspaceId).Count > 0;
+
+    /// <summary>
+    /// Authorize a workspace-scoped permission for a caller already confirmed a member of a workspace that exists.
+    /// Returns null when allowed; a 404 when the workspace is invisible to the caller (concealment); a 403 otherwise.
+    /// </summary>
+    public static IResult? CheckWorkspace(AuthorizationSubject subject, Guid workspaceId, string permission)
+    {
+        var effective = subject.EffectiveInWorkspace(workspaceId);
+        if (effective.Count == 0)
+        {
+            return Problems.NotFound();
+        }
+
+        return effective.Contains(permission) ? null : Problems.Forbidden();
+    }
 }

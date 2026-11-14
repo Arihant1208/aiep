@@ -26,4 +26,29 @@ public interface IControlPlaneStore
 
     /// <summary>Read one organization in its own context. Null if it is not visible (should not happen after a membership check).</summary>
     Task<OrganizationView?> GetOrganizationAsync(Guid organizationId, Guid subjectId, CancellationToken ct);
+
+    /// <summary>Create a workspace and audit it. Null if the slug is already taken in the organization (409).</summary>
+    Task<WorkspaceView?> CreateWorkspaceAsync(
+        ControlPlaneActor actor, Guid organizationId, string slug, string name, CancellationToken ct);
+
+    /// <summary>All workspaces in the organization (the endpoint filters to the ones the caller can see).</summary>
+    Task<IReadOnlyList<WorkspaceView>> ListWorkspacesAsync(Guid organizationId, Guid subjectId, CancellationToken ct);
+
+    /// <summary>One workspace by id, or null if it does not exist in the organization.</summary>
+    Task<WorkspaceView?> GetWorkspaceAsync(Guid organizationId, Guid subjectId, Guid workspaceId, CancellationToken ct);
+
+    /// <summary>Archive a workspace (idempotent) and audit the transition. Null if it does not exist.</summary>
+    Task<WorkspaceView?> ArchiveWorkspaceAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid workspaceId, CancellationToken ct);
+
+    /// <summary>
+    /// Grant (or change) a subject's workspace role and audit it. Null if the subject has no membership in the
+    /// organization (the composite FK would reject the grant; the endpoint returns 404).
+    /// </summary>
+    Task<WorkspaceGrantView?> SetWorkspaceGrantAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid subjectId, WorkspaceRole role, CancellationToken ct);
+
+    /// <summary>Remove a subject's workspace grant and audit it. False if there was no grant (404).</summary>
+    Task<bool> RemoveWorkspaceGrantAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid subjectId, CancellationToken ct);
 }

@@ -11,3 +11,8 @@ public sealed record ControlPlaneActor(Guid SubjectId, Guid? ApiKeyId, string? C
 }
 
 public sealed record OrganizationView(Guid Id, string Name, string Status, DateTimeOffset CreatedAt);
+
+public sealed record WorkspaceView(
+    Guid Id, string Slug, string Name, string Status, DateTimeOffset? ArchivedAt, DateTimeOffset CreatedAt);
+
+public sealed record WorkspaceGrantView(Guid WorkspaceId, Guid SubjectId, string Role);

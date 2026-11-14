@@ -6,6 +6,7 @@ using Aiep.Infrastructure.Identity;
 using Aiep.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 
 namespace Aiep.Infrastructure;
@@ -29,7 +30,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(sp => new TenantDatabase(sp.GetRequiredService<AiepDataSource>()));
         services.AddSingleton<ISubjectDirectory>(sp => new SubjectDirectory(sp.GetRequiredService<TenantDatabase>()));
         services.AddSingleton<IApiKeyStore>(sp => new ApiKeyStore(sp.GetRequiredService<TenantDatabase>()));
-        services.AddSingleton<IControlPlaneStore>(sp => new ControlPlaneStore(sp.GetRequiredService<TenantDatabase>()));
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<IControlPlaneStore>(sp => new ControlPlaneStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IAuthorizationService, AuthorizationService>();
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);

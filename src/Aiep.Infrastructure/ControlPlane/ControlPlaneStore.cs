@@ -13,7 +13,7 @@ namespace Aiep.Infrastructure.ControlPlane;
 /// bootstrap uses the <c>create_organization</c> SECURITY DEFINER function (ADR-0017). Each mutating method writes its
 /// audit event in the same transaction as the change.
 /// </summary>
-internal sealed partial class ControlPlaneStore(TenantDatabase database) : IControlPlaneStore
+internal sealed partial class ControlPlaneStore(TenantDatabase database, TimeProvider time) : IControlPlaneStore
 {
     public Task<AuthorizationSubject> ResolveAuthorizationAsync(
         Guid organizationId, Guid subjectId, IReadOnlyList<string>? keyScope, CancellationToken ct) =>
@@ -92,6 +92,130 @@ internal sealed partial class ControlPlaneStore(TenantDatabase database) : ICont
                 ? null
                 : new OrganizationView(organization.Id, organization.Name, organization.Status, organization.CreatedAt);
         }, ct);
+
+    public Task<WorkspaceView?> CreateWorkspaceAsync(
+        ControlPlaneActor actor, Guid organizationId, string slug, string name, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            if (await session.Db.Workspaces.AsNoTracking().AnyAsync(w => w.Slug == slug, token))
+            {
+                return (WorkspaceView?)null;
+            }
+
+            var workspace = new Workspace
+            {
+                Id = Guid.CreateVersion7(),
+                OrganizationId = organizationId,
+                Slug = slug,
+                Name = name,
+                CreatedBy = actor.SubjectId,
+            };
+            session.Db.Workspaces.Add(workspace);
+            session.Db.AuditEvents.Add(
+                Audit(actor, organizationId, workspace.Id, "workspace.created", "workspace", workspace.Id));
+            await session.Db.SaveChangesAsync(token);
+            return ToView(workspace);
+        }, ct);
+
+    public Task<IReadOnlyList<WorkspaceView>> ListWorkspacesAsync(
+        Guid organizationId, Guid subjectId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, subjectId), async (session, token) =>
+        {
+            var workspaces = await session.Db.Workspaces.AsNoTracking()
+                .OrderBy(w => w.Id)
+                .ToListAsync(token);
+            return (IReadOnlyList<WorkspaceView>)[.. workspaces.Select(ToView)];
+        }, ct);
+
+    public Task<WorkspaceView?> GetWorkspaceAsync(
+        Guid organizationId, Guid subjectId, Guid workspaceId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, subjectId), async (session, token) =>
+        {
+            var workspace = await session.Db.Workspaces.AsNoTracking()
+                .SingleOrDefaultAsync(w => w.Id == workspaceId, token);
+            return workspace is null ? null : ToView(workspace);
+        }, ct);
+
+    public Task<WorkspaceView?> ArchiveWorkspaceAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid workspaceId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            var workspace = await session.Db.Workspaces.SingleOrDefaultAsync(w => w.Id == workspaceId, token);
+            if (workspace is null)
+            {
+                return (WorkspaceView?)null;
+            }
+
+            // Idempotent: archiving an already-archived workspace changes nothing and writes no audit event.
+            if (workspace.Status == "active")
+            {
+                var now = time.GetUtcNow();
+                workspace.Status = "archived";
+                workspace.ArchivedAt = now;
+                workspace.UpdatedAt = now;
+                session.Db.AuditEvents.Add(
+                    Audit(actor, organizationId, workspace.Id, "workspace.archived", "workspace", workspace.Id));
+                await session.Db.SaveChangesAsync(token);
+            }
+
+            return ToView(workspace);
+        }, ct);
+
+    public Task<WorkspaceGrantView?> SetWorkspaceGrantAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid subjectId, WorkspaceRole role, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            // The grant's composite FK requires a membership in this organization; check first for a clean 404.
+            if (!await session.Db.Memberships.AsNoTracking().AnyAsync(m => m.SubjectId == subjectId, token))
+            {
+                return (WorkspaceGrantView?)null;
+            }
+
+            var roleName = role.ToDbValue();
+            var grant = await session.Db.WorkspaceMemberships
+                .SingleOrDefaultAsync(w => w.WorkspaceId == workspaceId && w.SubjectId == subjectId, token);
+            if (grant is null)
+            {
+                session.Db.WorkspaceMemberships.Add(new WorkspaceMembership
+                {
+                    Id = Guid.CreateVersion7(),
+                    OrganizationId = organizationId,
+                    WorkspaceId = workspaceId,
+                    SubjectId = subjectId,
+                    WorkspaceRole = roleName,
+                    CreatedBy = actor.SubjectId,
+                });
+            }
+            else
+            {
+                grant.WorkspaceRole = roleName;
+                grant.UpdatedAt = time.GetUtcNow();
+            }
+
+            session.Db.AuditEvents.Add(Audit(actor, organizationId, workspaceId, "grant.set", "subject", subjectId));
+            await session.Db.SaveChangesAsync(token);
+            return new WorkspaceGrantView(workspaceId, subjectId, roleName);
+        }, ct);
+
+    public Task<bool> RemoveWorkspaceGrantAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid subjectId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            var grant = await session.Db.WorkspaceMemberships
+                .SingleOrDefaultAsync(w => w.WorkspaceId == workspaceId && w.SubjectId == subjectId, token);
+            if (grant is null)
+            {
+                return false;
+            }
+
+            session.Db.WorkspaceMemberships.Remove(grant);
+            session.Db.AuditEvents.Add(Audit(actor, organizationId, workspaceId, "grant.removed", "subject", subjectId));
+            await session.Db.SaveChangesAsync(token);
+            return true;
+        }, ct);
+
+    private static WorkspaceView ToView(Workspace workspace) =>
+        new(workspace.Id, workspace.Slug, workspace.Name, workspace.Status, workspace.ArchivedAt, workspace.CreatedAt);
 
     // Builds an audit row for the current transaction. occurred_at takes the column default (now()).
     private static AuditEvent Audit(
