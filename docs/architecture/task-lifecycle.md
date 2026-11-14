@@ -69,6 +69,8 @@ We do **not** claim exactly-once execution. The precise contract is:
 
 ## Leases and recovery
 
+- Claim (`claim_next_run`, V0003) picks one eligible run with `FOR UPDATE OF r SKIP LOCKED`. A due `RetryWait` run is
+  promoted through `Queued` to `Running` in that one atomic claim (both legal transitions), rather than in a separate pass.
 - Claim sets `lease_expires_at = now() + lease_duration` (default 60 s); the worker heartbeats every `lease_duration / 3`.
 - Execution has a hard timeout from the task-definition version. The executor cancels the handler when it expires.
 - The reconciler moves `Running` runs with expired leases to `RetryWait` (or `DeadLettered` if attempts are exhausted)

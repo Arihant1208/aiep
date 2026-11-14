@@ -19,7 +19,7 @@ public sealed class ArchitectureTests
     private static readonly Assembly Application = typeof(TenantContext).Assembly;
     private static readonly Assembly Infrastructure = typeof(InfrastructureServiceCollectionExtensions).Assembly;
     private static readonly Assembly Api = typeof(OrganizationEndpoints).Assembly;
-    private static readonly Assembly Worker = typeof(RunProcessor).Assembly;
+    private static readonly Assembly Worker = typeof(RunWorker).Assembly;
 
     [Fact]
     public void Domain_depends_only_on_the_base_class_library()

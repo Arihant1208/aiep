@@ -57,9 +57,12 @@ Each slice is code + tests + doc updates, tested and pushed on its own.
 
 ### 4. Worker
 
-- [ ] Real loop: claim → heartbeat → execute handler (fake provider) → persist, with at-most-one terminal outcome;
-  retry/backoff and dead-lettering; cooperative cancellation
-- [ ] Reconciler: `Running` runs with expired leases → `RetryWait`/`DeadLettered`, attempt recorded as `LeaseExpired`
+- [x] `RunExecutor` (Application, pure orchestration): resolve the allowlisted handler, run it under a hard timeout while
+  heartbeating the lease, then settle via the Domain's retry classification and backoff. Success, permanent failure,
+  retry, dead-letter, missing handler and cooperative cancellation (heartbeat observes `cancel_requested_at`) all handled
+- [x] Worker host: `RunWorker` loop (claim → execute → settle, LISTEN/NOTIFY wake with poll fallback) and
+  `ReconcilerService` (periodic `reconcile_expired_leases`). The Phase 0 placeholder `RunProcessor` is gone
+- [x] `RunExecutorTests` drive all six paths end to end against the real queue and fake provider. Full suite 313 green
 
 ### 5. API
 
