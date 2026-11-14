@@ -23,6 +23,15 @@ jobs:
           global-json-file: global.json
       - name: Restore
         run: dotnet restore Aiep.slnx
+      - name: Scan for vulnerable NuGet packages
+        # Belt-and-suspenders to the restore-time NuGet audit (CLAUDE.md): fail on any known-vulnerable package,
+        # transitive ones included. `dotnet list` prints a report but always exits 0, so inspect its output.
+        run: |
+          dotnet list Aiep.slnx package --vulnerable --include-transitive 2>&1 | tee vulnerable-packages.txt
+          if grep -q 'has the following vulnerable packages' vulnerable-packages.txt; then
+            echo "::error::Vulnerable NuGet packages found. Upgrade them (never suppress)."
+            exit 1
+          fi
       - name: Check formatting
         run: dotnet format Aiep.slnx --verify-no-changes --no-restore
       - name: Build
@@ -45,3 +54,14 @@ jobs:
         run: docker compose --profile app config --quiet
       - name: Build service images
         run: docker compose --profile app build
+      - name: Install Trivy
+        # Security scanners run at latest so they use the freshest advisory database.
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan images for vulnerabilities
+        # Fail only on fixable HIGH/CRITICAL findings in our own images, so the gate is actionable.
+        run: |
+          for image in aiep-migrator aiep-api aiep-worker; do
+            echo "::group::Trivy $image"
+            trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$image:local"
+            echo "::endgroup::"
+          done

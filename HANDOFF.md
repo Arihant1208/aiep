@@ -217,11 +217,16 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
    never modified. Plus role escalation, revoked and expired keys, a removed member's next request, a staging-prefixed key
    rejected in a production config.
 
-8. **Architecture tests** (for example NetArchTest): Domain depends on nothing; Application doesn't reference
-   Infrastructure; hosts don't touch Npgsql directly.
+8. ✅ **Done 2026-11-14:** `tests/Aiep.Architecture.Tests` (4 tests) checks each assembly's manifest references
+   (reflection, no NetArchTest dependency): Domain → BCL only; Application never references Infrastructure/hosts/Npgsql/EF;
+   the API and Worker hosts never reference Npgsql or EF directly. Marker types, not `Program` (both hosts have one).
 
-9. **CI:** add a vulnerability scan (`dotnet list package --vulnerable --include-transitive`, fail on any) and
-   Trivy for the images; integration tests need Docker on the runner (`ubuntu-latest` has it).
+9. ✅ **Done 2026-11-14:** CI gains a NuGet vulnerability gate (`dotnet list --vulnerable`, matched on "has the
+   following vulnerable packages" — not a severity grep, which false-matches "fo**llow**ing") and Trivy image scans
+   (fixable HIGH/CRITICAL) of the three app images, which now have explicit `image:` names in Compose.
+
+**Phase 1 is complete.** Next session: Phase 2 (task lifecycle and durable execution; ADR-0005 queue). The Worker host
+is still a placeholder loop — that's where Phase 2 starts.
 
 10. **Docs to update as you go:** threat model (mark T1–T6 "verified by" with test names), data model (columns
     actually built), authorization model (any decisions on its open questions), `docs/roadmap/README.md` status,

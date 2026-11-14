@@ -3,8 +3,8 @@
 *What AIEP **is** right now — not the plan, the plan is in the [roadmap](roadmap/README.md). Updated at the end of each
 vertical slice. This page links to canonical docs rather than repeating them.*
 
-**As of:** 2026-11-14 · **Phase:** 1 (control plane and tenant security), steps 1–7 done · **Latest commit:**
-`Add the cross-tenant security test suite (Phase 1, step 7)`.
+**As of:** 2026-11-14 · **Phase:** 1 **complete** (control plane and tenant security); Phase 2 next · **Latest commit:**
+`Close out Phase 1: architecture tests and CI scanning (steps 8-9)`.
 
 ## In one paragraph
 
@@ -51,9 +51,10 @@ with the permission, status codes and audit action for each endpoint.
 | --- | --- | --- |
 | `Aiep.Domain.Tests` | 21 | Run state machine |
 | `Aiep.Application.Tests` | 64 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code) |
+| `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
 | `Aiep.Database.Tests` | 82 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator |
 | `Aiep.Api.Tests` | 80 | OIDC + API-key auth, control-plane endpoints, and the cross-tenant security suite, against real Postgres + Keycloak |
-| **Total** | **247** | |
+| **Total** | **251** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -64,9 +65,11 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-Phase 1 is nearly done ([checklist](roadmap/phase-1.md)): the **exit criterion — users access only what they're
-authorized for, proven by tests — is met** (`CrossTenantSecurityTests`). Remaining: step 8 architecture tests
-(dependency rules) and step 9 CI vulnerability scanning. Then Phase 2: task lifecycle and durable execution.
+**Phase 1 is complete** ([checklist](roadmap/phase-1.md)): the exit criterion — users access only what they're
+authorized for, proven by tests — is met, architecture tests enforce the module boundaries, and CI scans packages and
+images for vulnerabilities. Next is **Phase 2: task lifecycle and durable execution** ([roadmap](roadmap/README.md)) —
+the PostgreSQL-backed work queue (ADR-0005), submit → queue → execute → persist, surviving a simulated worker crash,
+where the Worker host stops being a placeholder.
 
 ## Keeping this page honest
 

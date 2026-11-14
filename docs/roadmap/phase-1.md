@@ -100,11 +100,17 @@
 
 ### 8. Architecture tests
 
-- [ ] Project dependency rules (ADR-0002)
+- [x] `Aiep.Architecture.Tests` enforces ADR-0002 boundaries by inspecting each assembly's manifest references
+  (the compiler only records a reference to an assembly whose types are used): Domain depends only on the BCL;
+  Application never reaches Infrastructure, the hosts or the database libraries; the API and Worker hosts never touch
+  Npgsql or EF directly (all tenant access goes through the Infrastructure unit of work)
 
 ### 9. CI
 
-- [ ] Vulnerability scanning (packages and images)
+- [x] NuGet vulnerability gate: `dotnet list ... --vulnerable --include-transitive`, fail on any (belt-and-suspenders
+  to the restore-time audit)
+- [x] Trivy scans the built `aiep-migrator`/`aiep-api`/`aiep-worker` images (fail on fixable HIGH/CRITICAL); the app
+  services now carry explicit `image:` names
 
 ## Deviations and decisions
 

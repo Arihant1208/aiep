@@ -96,6 +96,7 @@ services:
 
   migrator:
     profiles: ["app"]
+    image: aiep-migrator:local
     build:
       context: .
       dockerfile: src/Aiep.Migrator/Dockerfile
@@ -109,6 +110,7 @@ services:
 
   api:
     profiles: ["app"]
+    image: aiep-api:local
     build:
       context: .
       dockerfile: src/Aiep.Api/Dockerfile
@@ -131,6 +133,7 @@ services:
 
   worker:
     profiles: ["app"]
+    image: aiep-worker:local
     build:
       context: .
       dockerfile: src/Aiep.Worker/Dockerfile
