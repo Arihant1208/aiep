@@ -80,7 +80,15 @@
 
 ### 6. Endpoints
 
-- [ ] Organizations, members, workspaces, grants, API keys, `GET /v1/me/permissions`; audit events
+- [x] Organizations (create, get) and `GET /v1/me/permissions` (6a); workspaces (create, list, get, archive) and
+  workspace grants (set, remove) (6b); members (list, add, change role, remove) (6c); API keys (create returning the
+  secret once, list, revoke) (6d). See the [control-plane API](../api/control-plane.md)
+- [x] `IControlPlaneStore` (Application) / `ControlPlaneStore` (Infrastructure): every mutation writes its audit event
+  in the same transaction; `EndpointAuth` runs algorithm steps 3–5 per request (not-a-member → 404, missing permission
+  → 403); `CodedProblem` carries `code` + `correlationId` on every fault
+- [x] Invariants enforced at the edge: Owner-protection, at-least-one-Owner (409 `organization.last_owner`), and
+  scope/role delegation within the actor's own permissions
+- [x] 41 API tests across organizations, members, workspaces/grants and API keys
 
 ### 7. Security test suite
 

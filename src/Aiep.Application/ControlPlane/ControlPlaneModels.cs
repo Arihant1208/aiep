@@ -39,3 +39,23 @@ public sealed record MemberChangeResult(MemberChangeOutcome Outcome, MemberView?
 {
     public static MemberChangeResult Fail(MemberChangeOutcome outcome) => new(outcome, null);
 }
+
+/// <summary>API key metadata. The secret is never stored or returned here (only once, at creation).</summary>
+public sealed record ApiKeyView(
+    Guid Id,
+    string Name,
+    string Environment,
+    Guid? WorkspaceId,
+    Guid OwnerSubjectId,
+    IReadOnlyList<string> Permissions,
+    DateTimeOffset? ExpiresAt,
+    DateTimeOffset? LastUsedAt,
+    DateTimeOffset? RevokedAt,
+    DateTimeOffset CreatedAt);
+
+public enum ApiKeyRevokeOutcome
+{
+    Revoked,
+    NotFound,
+    AlreadyRevoked,
+}

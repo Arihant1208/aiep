@@ -326,6 +326,64 @@ internal sealed partial class ControlPlaneStore(TenantDatabase database, TimePro
             return new MemberChangeResult(MemberChangeOutcome.Ok, null);
         }, ct);
 
+    public Task<ApiKeyView> CreateApiKeyAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid? workspaceId, string keyId, byte[] secretHash,
+        string environment, string name, IReadOnlyList<string> permissions, DateTimeOffset? expiresAt, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            var key = new ApiKey
+            {
+                Id = Guid.CreateVersion7(),
+                OrganizationId = organizationId,
+                WorkspaceId = workspaceId,
+                KeyId = keyId,
+                SecretHash = secretHash,
+                Environment = environment,
+                Name = name,
+                OwnerSubjectId = actor.SubjectId,
+                Permissions = [.. permissions],
+                ExpiresAt = expiresAt,
+                CreatedBy = actor.SubjectId,
+            };
+            session.Db.ApiKeys.Add(key);
+            session.Db.AuditEvents.Add(Audit(actor, organizationId, workspaceId, "api_key.created", "api_key", key.Id));
+            await session.Db.SaveChangesAsync(token);
+            return ToView(key);
+        }, ct);
+
+    public Task<IReadOnlyList<ApiKeyView>> ListApiKeysAsync(Guid organizationId, Guid subjectId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, subjectId), async (session, token) =>
+        {
+            var keys = await session.Db.ApiKeys.AsNoTracking().OrderBy(k => k.Id).ToListAsync(token);
+            return (IReadOnlyList<ApiKeyView>)[.. keys.Select(ToView)];
+        }, ct);
+
+    public Task<ApiKeyRevokeOutcome> RevokeApiKeyAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid apiKeyId, CancellationToken ct) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, actor.SubjectId), async (session, token) =>
+        {
+            var key = await session.Db.ApiKeys.SingleOrDefaultAsync(k => k.Id == apiKeyId, token);
+            if (key is null)
+            {
+                return ApiKeyRevokeOutcome.NotFound;
+            }
+
+            if (key.RevokedAt is not null)
+            {
+                return ApiKeyRevokeOutcome.AlreadyRevoked;
+            }
+
+            key.RevokedAt = time.GetUtcNow();
+            key.RevokedBy = actor.SubjectId;
+            session.Db.AuditEvents.Add(Audit(actor, organizationId, key.WorkspaceId, "api_key.revoked", "api_key", key.Id));
+            await session.Db.SaveChangesAsync(token);
+            return ApiKeyRevokeOutcome.Revoked;
+        }, ct);
+
+    private static ApiKeyView ToView(ApiKey key) => new(
+        key.Id, key.Name, key.Environment, key.WorkspaceId, key.OwnerSubjectId, key.Permissions,
+        key.ExpiresAt, key.LastUsedAt, key.RevokedAt, key.CreatedAt);
+
     private static async Task<bool> IsLastOwnerAsync(TenantSession session, Guid subjectId, CancellationToken ct)
     {
         var owners = await session.Db.Memberships.AsNoTracking()

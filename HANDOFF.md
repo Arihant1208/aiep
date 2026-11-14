@@ -196,7 +196,13 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
    - Invariant tests: Member has no workspace access; nobody grants a permission they lack; at least one Owner always
      remains; key permissions shrink when the owner loses access.
 
-6. **Endpoints** (`/v1`, ADR-0015): organizations (create, get), members (list, invite/add, change role, remove),
+6. ✅ **Done 2026-11-14:** the full `/v1` control plane in four slices (6a organizations + `/me/permissions` + the
+   authorization-resolution/audit foundation; 6b workspaces + grants; 6c members; 6d API keys). `IControlPlaneStore`
+   (Application) / `ControlPlaneStore` (Infrastructure) with per-transaction audit; `EndpointAuth` runs algorithm
+   steps 3–5; `CodedProblem` for faults. 404 concealment, Owner-protection, last-Owner (409) and scope/role delegation
+   enforced; 41 API tests. See [docs/api/control-plane.md](docs/api/control-plane.md). Deferred footnote policies
+   (own/ws-scoped key read/revoke, developer-key workspace policy) listed there. Original brief kept below.
+   **Endpoints** (`/v1`, ADR-0015): organizations (create, get), members (list, invite/add, change role, remove),
    workspaces (create, list, get, archive), workspace grants, API keys (create, which returns the secret once; list; revoke),
    `GET /v1/me/permissions` (the debugging aid from ADR-0010). Prefixed opaque IDs; 404 concealment;
    Problem Details `code`s; audit events for every administrative action.

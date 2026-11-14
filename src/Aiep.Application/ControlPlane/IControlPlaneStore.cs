@@ -69,4 +69,19 @@ public interface IControlPlaneStore
     /// <summary>Remove a member (workspace grants cascade), enforcing Owner-protection and the last-Owner invariant, and audit it.</summary>
     Task<MemberChangeResult> RemoveMemberAsync(
         ControlPlaneActor actor, Guid organizationId, OrgRole actorRole, Guid subjectId, CancellationToken ct);
+
+    /// <summary>
+    /// Store a new API key (its secret already hashed by the caller) owned by the actor, and audit it. The endpoint has
+    /// already checked that the permissions are within the creator's own (ADR-0008).
+    /// </summary>
+    Task<ApiKeyView> CreateApiKeyAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid? workspaceId, string keyId, byte[] secretHash,
+        string environment, string name, IReadOnlyList<string> permissions, DateTimeOffset? expiresAt, CancellationToken ct);
+
+    /// <summary>The organization's API keys, metadata only (never the secret).</summary>
+    Task<IReadOnlyList<ApiKeyView>> ListApiKeysAsync(Guid organizationId, Guid subjectId, CancellationToken ct);
+
+    /// <summary>Revoke an API key (soft; sets revoked_at) and audit it. Idempotent.</summary>
+    Task<ApiKeyRevokeOutcome> RevokeApiKeyAsync(
+        ControlPlaneActor actor, Guid organizationId, Guid apiKeyId, CancellationToken ct);
 }

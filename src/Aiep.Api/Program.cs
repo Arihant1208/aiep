@@ -28,6 +28,7 @@ v1.MapMeEndpoints();
 v1.MapOrganizationEndpoints();
 v1.MapWorkspaceEndpoints();
 v1.MapMemberEndpoints();
+v1.MapApiKeyEndpoints();
 
 app.Run();
 
