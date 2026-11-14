@@ -3,15 +3,17 @@
 *What AIEP **is** right now — not the plan, the plan is in the [roadmap](roadmap/README.md). Updated at the end of each
 vertical slice. This page links to canonical docs rather than repeating them.*
 
-**As of:** 2026-11-14 · **Phase:** 1 (control plane and tenant security), steps 1–4 done · **Latest commit:**
-`Add OIDC and API-key authentication (Phase 1, step 4)`.
+**As of:** 2026-11-14 · **Phase:** 1 (control plane and tenant security), steps 1–5 done · **Latest commit:**
+`Add the authorization model (Phase 1, step 5)`.
 
 ## In one paragraph
 
 AIEP is a multi-tenant .NET 10 service with a PostgreSQL 17 system of record. Today it can **authenticate** a caller —
 a person via an OIDC token from Keycloak, or an application via a scoped API key — map them to a tenant-scoped subject,
-and enforce tenant isolation at the database with row-level security. It does **not yet** authorize fine-grained actions,
-expose control-plane resources (organizations, workspaces, members, keys), or run any AI task. Those are the next steps.
+and enforce tenant isolation at the database with row-level security. The **authorization model** is built and tested:
+the role→permission table, effective-permission computation (org role ∪ workspace grant ∩ key scope), and the delegation
+and owner-protection invariants. It is **not yet wired to endpoints** — there are no control-plane resources
+(organizations, workspaces, members, keys) to authorize against, and no AI task runs. Those are the next steps (6 onward).
 
 ## What runs today
 
@@ -30,7 +32,7 @@ Full local stack: [`docker compose --profile app up -d --build`](development/loc
 ## What is built, by layer
 
 - **Domain** — `TaskRunStatus` + `TaskRunTransitions` state machine (single source of truth; [task lifecycle](architecture/task-lifecycle.md)).
-- **Application** — `TenantContext`; identity primitives (API-key format/hashing, `ExternalIdentity`); resource-ID encoding ([`ResourceId`](../src/Aiep.Application/Ids/ResourceId.cs)).
+- **Application** — `TenantContext`; identity primitives (API-key format/hashing, `ExternalIdentity`); resource-ID encoding ([`ResourceId`](../src/Aiep.Application/Ids/ResourceId.cs)); the [authorization model](security/authorization-model.md) (`Permission`, `RolePermissions`, `AuthorizationSubject`, `IAuthorizationService`, `AuthorizationInvariants`).
 - **Infrastructure** — `TenantDatabase` unit of work (the **only** path to tenant data: transaction-local `set_config`, EF `AiepDbContext` bound to that connection); API-key store and subject directory over `SECURITY DEFINER` lookups ([ADR-0017](adr/0017-pre-tenant-operations-security-definer.md)).
 - **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)), Problem Details with stable `code`s, correlation-id and credentials-in-URL middleware, `GET /v1/me`.
 - **Data** — `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events` ([data model](data/data-model.md)).
@@ -50,10 +52,10 @@ Control-plane resource endpoints (organizations, workspaces, members, API-key ma
 | Suite | Count | Proves |
 | --- | --- | --- |
 | `Aiep.Domain.Tests` | 21 | Run state machine |
-| `Aiep.Application.Tests` | 47 | Key format/hashing, resource IDs |
+| `Aiep.Application.Tests` | 64 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code) |
 | `Aiep.Database.Tests` | 82 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator |
 | `Aiep.Api.Tests` | 32 | OIDC + API-key paths against real Postgres + Keycloak |
-| **Total** | **182** | |
+| **Total** | **199** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -64,8 +66,9 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-Phase 1 continues ([checklist](roadmap/phase-1.md)): **step 5 authorization** (role→permission table + `IAuthorizationService`),
-then step 6 endpoints, step 7 the cross-tenant security test suite, step 8 architecture tests, step 9 CI vulnerability scan.
+Phase 1 continues ([checklist](roadmap/phase-1.md)): **step 6 endpoints** (organizations, workspaces, members, grants,
+API keys, `GET /v1/me/permissions`) — where the authorization model gets wired to real resources with audit events —
+then step 7 the cross-tenant security test suite, step 8 architecture tests, step 9 CI vulnerability scan.
 
 ## Keeping this page honest
 

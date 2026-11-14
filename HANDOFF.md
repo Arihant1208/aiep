@@ -182,7 +182,14 @@ Do these in order, as vertical slices. Each step: code + tests + doc/ADR updates
    - ADR-0016 commits to two tests: a token carrying a Keycloak admin/realm role grants nothing in AIEP, and a token
      signed by an unknown key is rejected. Only RS256/ES256 accepted; HTTPS metadata may be off only in `Development`.
 
-5. **Authorization** (`Aiep.Application`).
+5. ✅ **Done 2026-11-14:** `src/Aiep.Application/Authorization` (`Permission`, `OrgRole`/`WorkspaceRole`,
+   `RolePermissions`, `AuthorizationSubject`, `IAuthorizationService`, `AuthorizationInvariants`), 17 tests in
+   `Aiep.Application.Tests/Authorization`. The role table is the code copy of the matrix in
+   `docs/security/authorization-model.md`; `RolePermissionsMatrixTests` parses the doc and fails on drift (it caught a
+   missing Auditor `keys:read` on first run). Footnoted cells grant the permission; the condition is a step-6 policy at
+   the endpoint. `IAuthorizationService` returns `NotAMember` (→404) / `MissingPermission` (→403). Not yet wired to
+   endpoints — that's step 6. Original brief kept below.
+   **Authorization** (`Aiep.Application`).
    - `Permission` constants, a role→permission table built from the matrix in `docs/security/authorization-model.md`
      (that doc is the spec, and a unit test asserts the table matches it), an `IAuthorizationService` implementing the
      8-step algorithm in that doc, effective permissions = org-implied ∪ workspace grant ∩ key scope.

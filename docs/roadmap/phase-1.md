@@ -66,8 +66,17 @@
 
 ### 5. Authorization
 
-- [ ] Permission constants and role table checked against the [authorization model](../security/authorization-model.md)
-- [ ] Invariant tests
+- [x] `Permission` constants (24, frozen) and `OrgRole`/`WorkspaceRole` with strict parsing of the stored strings
+  (`src/Aiep.Application/Authorization`)
+- [x] `RolePermissions` table: the single code copy of the matrix in the [authorization model](../security/authorization-model.md).
+  Footnoted cells (`limited`, `own`, `ws-scoped`) grant the permission; their condition is a step-6 policy, not an absence
+- [x] `AuthorizationSubject.EffectiveInWorkspace/AtOrganization`: org-role permissions ∪ workspace-grant permissions
+  (Owner/Admin implicitly WorkspaceAdmin everywhere) ∩ API-key scope
+- [x] `IAuthorizationService` (algorithm steps 3–5): `NotAMember` → 404, `MissingPermission` → 403; an unknown required
+  permission throws (it is always a code constant)
+- [x] `AuthorizationInvariants`: `CanDelegate`, `ScopeExceeding`, `WouldRemoveLastOwner`
+- [x] 17 tests (`Aiep.Application.Tests/Authorization`), including a test that parses the model doc's matrix and fails if
+  the code table drifts — it caught a missing `keys:read` for Auditor on first run
 
 ### 6. Endpoints
 

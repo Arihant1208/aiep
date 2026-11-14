@@ -1,7 +1,8 @@
 # Authorization model
 
-*Derived from Spec §8. Role structure is **Proposed** in [ADR-0010](../adr/0010-two-level-role-model.md). This matrix
-becomes the source for the role-to-permission table in code and its unit tests. Freeze it before Phase 1.*
+*Derived from Spec §8. Role structure is Accepted in [ADR-0010](../adr/0010-two-level-role-model.md). This matrix is the
+**source** for the role-to-permission table in code (`src/Aiep.Application/Authorization`): `RolePermissionsMatrixTests`
+parses this page and fails if the two drift, so the doc and the enforced rules can never silently disagree.*
 
 ## Algorithm (every protected request)
 
@@ -76,14 +77,33 @@ Workspace roles: **WA** WorkspaceAdmin, **D** Developer, **E** Evaluator, **V** 
 
 Org Owner/Admin hold **WA** implicitly on every workspace in the organization.
 
-## Invariants (each one gets a test)
+## How the table is enforced
 
-- Organization membership alone (role `Member`) grants **no** workspace access (FR-005).
-- No one can grant a permission they don't hold.
-- An organization must always have at least one active Owner.
-- API key effective permissions = key scope ∩ owner's *current* effective permissions.
-- Platform operators have no tenant permissions without an active, audited break-glass grant.
-- No role can read secret values after creation.
+The code table answers algorithm **step 5** only: *does this role hold this permission at all?* A footnoted cell
+(`limited¹`, `✓²`, `own`, `ws-scoped`, `✓³⁻⁵`) still grants the permission; its condition is a **step-6 policy** applied
+at the endpoint, not an absence of the permission:
+
+| Footnote | Permission is granted, but the endpoint additionally checks… |
+| --- | --- |
+| `limited¹` (Admin `org:manage`, `retention:manage`) | the change stays within the Owner's configured limits |
+| `✓²` (Admin `members:manage`) | the target is not an Owner (can't grant/revoke/remove Owner) |
+| `own` (Developer `keys:read`, `keys:revoke`) | the key's owner is the caller |
+| `✓⁵` (Developer `keys:create`) | workspace policy allows developer-created keys; scope ⊆ own permissions |
+| `ws-scoped` (WA `audit:read`) | events are limited to the caller's workspace |
+| `✓³` (Evaluator `runs:submit`, `runs:read_result`) | evaluation runs and their results only |
+| `✓⁴` (Developer/Evaluator `runs:cancel`) | runs the caller submitted |
+
+## Invariants (each one has a test)
+
+- Organization membership alone (role `Member`) grants **no** workspace access (FR-005) —
+  `AuthorizationTests.A_plain_member_has_no_access_even_in_a_workspace`, `…A_workspace_grant_applies_only_to_its_workspace`.
+- No one can grant a permission they don't hold — `…No_one_can_delegate_a_permission_they_lack`,
+  `…Key_scope_must_stay_within_the_owners_permissions`.
+- An organization must always have at least one active Owner — `…The_last_owner_cannot_be_removed`.
+- API key effective permissions = key scope ∩ owner's *current* effective permissions —
+  `…An_api_key_cannot_exceed_its_scope`, `…A_key_loses_power_when_its_owner_loses_access`.
+- Platform operators have no tenant permissions without an active, audited break-glass grant *(Phase 5; no operator identity exists yet)*.
+- No role can read secret values after creation *(no endpoint returns a secret; enforced when key/secret endpoints land in step 6)*.
 
 ## Open questions
 
