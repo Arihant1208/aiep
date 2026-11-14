@@ -30,18 +30,23 @@ Each slice is code + tests + doc updates, tested and pushed on its own.
   narrowed privileges, the worker claim path, cross-tenant composite-FK rejections, idempotency-scope uniqueness.
   Full suite 264 green (Database 95)
 
-### 2. Domain and ports
+### 2. Domain retry model and execution ports
 
-- [ ] Error categories and the retry/backoff policy (retryable vs permanent; `min(cap, base·2^(n-1))` with full jitter);
-  lease model. Unit-tested against [task-lifecycle.md](../architecture/task-lifecycle.md)
-- [ ] `IRunQueue` port (enqueue, claim, heartbeat, complete, requeue) and `ITaskHandler` + an allowlisted registry
-  (ADR-0007); `IModelProvider` with the deterministic fake (ADR-0009)
+- [x] Error categories (retryable vs permanent) and full-jitter exponential backoff with `RetryPolicy`
+  (`min(cap, base·2^(n-1))`, honouring provider `Retry-After`) in the Domain, unit-tested against
+  [task-lifecycle.md](../architecture/task-lifecycle.md)
+- [x] Execution ports in the Application: `IModelProvider` + the deterministic fake provider (ADR-0009);
+  `ITaskHandler`, `IHandlerRegistry` allowlist (ADR-0007) and the `completion` handler; registered in DI. Unit tests
+  cover backoff/classification, fake determinism, the handler (templating, unknown provider, provider-error
+  propagation) and the registry allowlist. Full suite 293 green
 
-### 3. Queue (Infrastructure)
+### 3. Queue (port + Infrastructure)
 
-- [ ] PostgreSQL queue over the tenant unit of work: enqueue in the acceptance transaction; claim with
-  `FOR UPDATE SKIP LOCKED` (promote due `RetryWait` → `Queued`), set lease + create the attempt in one transaction;
-  heartbeat; terminal/ requeue as conditional updates (`WHERE id = @id AND status = @expected`)
+- [ ] `IRunQueue` port (claim, heartbeat, settle, reconcile) over the tenant unit of work
+- [ ] PostgreSQL queue: the cross-tenant claim and reconcile run through `SECURITY DEFINER` functions (new migration),
+  because a worker has no tenant context when it claims; claim uses `FOR UPDATE SKIP LOCKED`, promotes due
+  `RetryWait` → `Queued`, sets the lease and creates the attempt atomically; heartbeat and settle are conditional
+  updates (`WHERE id = @id AND status = @expected AND lease_owner = @worker`)
 - [ ] `LISTEN/NOTIFY` on enqueue with polling fallback; idempotency store
 - [ ] Queue contract tests, including concurrent claims never double-claiming a run
 

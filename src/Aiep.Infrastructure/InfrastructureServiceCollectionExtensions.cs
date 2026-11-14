@@ -1,5 +1,8 @@
 using Aiep.Application.Authorization;
 using Aiep.Application.ControlPlane;
+using Aiep.Application.Execution;
+using Aiep.Application.Execution.Handlers;
+using Aiep.Application.Execution.Providers;
 using Aiep.Application.Identity;
 using Aiep.Infrastructure.ControlPlane;
 using Aiep.Infrastructure.Identity;
@@ -34,6 +37,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IControlPlaneStore>(sp => new ControlPlaneStore(
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IAuthorizationService, AuthorizationService>();
+
+        // Execution (ADR-0007 handlers, ADR-0009 providers). Phase 2 ships the deterministic fake provider and the
+        // completion handler; the registry is the allowlist resolved from all registered handlers.
+        services.AddSingleton<IModelProvider, FakeModelProvider>();
+        services.AddSingleton<ITaskHandler, CompletionHandler>();
+        services.AddSingleton<IHandlerRegistry>(sp => new HandlerRegistry(sp.GetServices<ITaskHandler>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 
