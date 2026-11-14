@@ -78,7 +78,15 @@ public sealed class TenantDb(PostgresFixture db)
 }
 
 /// <summary>One organization with its owner and one row in every tenant-owned table.</summary>
-public sealed record Tenant(Guid OrganizationId, Guid OwnerId, Guid WorkspaceId, Guid ApiKeyId, string KeyId);
+public sealed record Tenant(
+    Guid OrganizationId,
+    Guid OwnerId,
+    Guid WorkspaceId,
+    Guid ApiKeyId,
+    string KeyId,
+    Guid TaskDefinitionId,
+    Guid TaskDefinitionVersionId,
+    Guid RunId);
 
 public static class Seed
 {
@@ -129,6 +137,56 @@ public static class Seed
                 Guid.CreateVersion7(), org, owner);
         });
 
-        return new Tenant(org, owner, workspace, apiKey, keyId);
+        // V0002: one row in every task-execution table, through the same roles the API and worker use.
+        var definition = Guid.CreateVersion7();
+        var version = Guid.CreateVersion7();
+        var run = Guid.CreateVersion7();
+        await tdb.RunAsync("aiep_api", org, owner, async c =>
+        {
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.task_definitions
+                    (id, organization_id, workspace_id, slug, name, current_version, created_by)
+                VALUES ($1, $2, $3, 'echo', 'Echo', 1, $4)
+                """,
+                definition, org, workspace, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.task_definition_versions
+                    (id, organization_id, workspace_id, task_definition_id, version, status,
+                     input_schema, output_schema, handler_type, handler_version, model_provider, model_name,
+                     published_at, created_by)
+                VALUES ($1, $2, $3, $4, 1, 'published',
+                        '{}'::jsonb, '{}'::jsonb, 'echo', '1', 'fake', 'fake-1', now(), $5)
+                """,
+                version, org, workspace, definition, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.task_runs
+                    (id, organization_id, workspace_id, task_definition_version_id, status, max_attempts,
+                     input, next_attempt_at, created_by)
+                VALUES ($1, $2, $3, $4, 'Queued', 3, '{}'::jsonb, now(), $5)
+                """,
+                run, org, workspace, version, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.idempotency_keys
+                    (id, organization_id, workspace_id, caller_id, key_hash, request_hash, run_id, expires_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '1 day')
+                """,
+                Guid.CreateVersion7(), org, workspace, owner,
+                RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32), run);
+        });
+
+        // Attempts are written by the worker role only (aiep_api has no INSERT on task_run_attempts).
+        await tdb.RunAsync("aiep_worker", org, owner, c => TenantDb.ExecuteAsync(c,
+            """
+            INSERT INTO aiep.task_run_attempts
+                (id, organization_id, workspace_id, run_id, attempt_number, status, worker_id)
+            VALUES ($1, $2, $3, $4, 1, 'running', 'seed')
+            """,
+            Guid.CreateVersion7(), org, workspace, run));
+
+        return new Tenant(org, owner, workspace, apiKey, keyId, definition, version, run);
     }
 }

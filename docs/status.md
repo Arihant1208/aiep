@@ -3,8 +3,8 @@
 *What AIEP **is** right now — not the plan, the plan is in the [roadmap](roadmap/README.md). Updated at the end of each
 vertical slice. This page links to canonical docs rather than repeating them.*
 
-**As of:** 2026-11-14 · **Phase:** 1 **complete** (control plane and tenant security); Phase 2 next · **Latest commit:**
-`Close out Phase 1: architecture tests and CI scanning (steps 8-9)`.
+**As of:** 2026-11-14 · **Phase:** 2 **in progress** (task lifecycle and durable execution); Phase 1 complete · **Latest
+commit:** `Add the task-execution schema (Phase 2, slice 1)`.
 
 ## In one paragraph
 
@@ -13,8 +13,9 @@ a person via an OIDC token from Keycloak, or an application via a scoped API key
 create and read organizations, manage members and their roles, create and archive workspaces, grant workspace roles,
 and issue, list and revoke API keys. Every request is authorized against the role model (org role ∪ workspace grant ∩
 key scope), a resource the caller can't see is concealed as 404, and every administrative action is audited. Tenant
-isolation is enforced in the database with row-level security underneath it all. It does **not yet** run any AI task —
-that is Phase 2. The remaining Phase 1 work is the cross-tenant security test suite and the CI hardening (steps 7–9).
+isolation is enforced in the database with row-level security underneath it all. It does **not yet** run any AI task:
+Phase 2 is under way, and its first slice has landed the task-execution schema (task definitions and immutable versions,
+runs with their queue state, attempts, idempotency keys), but no run is executed yet — the worker is still a placeholder.
 
 ## What runs today
 
@@ -36,7 +37,7 @@ Full local stack: [`docker compose --profile app up -d --build`](development/loc
 - **Application** — `TenantContext`; identity primitives (API-key format/hashing, `ExternalIdentity`); resource-ID encoding ([`ResourceId`](../src/Aiep.Application/Ids/ResourceId.cs)); the [authorization model](security/authorization-model.md) (`Permission`, `RolePermissions`, `AuthorizationSubject`, `IAuthorizationService`, `AuthorizationInvariants`); the control-plane port `IControlPlaneStore`.
 - **Infrastructure** — `TenantDatabase` unit of work (the **only** path to tenant data: transaction-local `set_config`, EF `AiepDbContext` bound to that connection); API-key store, subject directory and `ControlPlaneStore` over the unit of work and `SECURITY DEFINER` lookups ([ADR-0017](adr/0017-pre-tenant-operations-security-definer.md)).
 - **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)); the `/v1` [control-plane endpoints](api/control-plane.md) (organizations, members, workspaces, grants, API keys, `/me`, `/me/permissions`) with `EndpointAuth` (resolve + authorize) and `CodedProblem`; Problem Details with stable `code`s; correlation-id and credentials-in-URL middleware.
-- **Data** — `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events` ([data model](data/data-model.md)).
+- **Data** — V0001: `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events`. V0002: `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys` ([data model](data/data-model.md)).
 
 ## What a caller can do today
 
@@ -52,9 +53,9 @@ with the permission, status codes and audit action for each endpoint.
 | `Aiep.Domain.Tests` | 21 | Run state machine |
 | `Aiep.Application.Tests` | 64 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code) |
 | `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
-| `Aiep.Database.Tests` | 82 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator |
+| `Aiep.Database.Tests` | 95 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs |
 | `Aiep.Api.Tests` | 80 | OIDC + API-key auth, control-plane endpoints, and the cross-tenant security suite, against real Postgres + Keycloak |
-| **Total** | **251** | |
+| **Total** | **264** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -65,11 +66,11 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-**Phase 1 is complete** ([checklist](roadmap/phase-1.md)): the exit criterion — users access only what they're
-authorized for, proven by tests — is met, architecture tests enforce the module boundaries, and CI scans packages and
-images for vulnerabilities. Next is **Phase 2: task lifecycle and durable execution** ([roadmap](roadmap/README.md)) —
-the PostgreSQL-backed work queue (ADR-0005), submit → queue → execute → persist, surviving a simulated worker crash,
-where the Worker host stops being a placeholder.
+**Phase 1 is complete** ([checklist](roadmap/phase-1.md)). **Phase 2 is in progress**
+([checklist](roadmap/phase-2.md)): slice 1 landed the task-execution schema (V0002) with its isolation, privileges and
+the version-immutability trigger proven by tests. Still to come: the domain retry/lease model and ports, the PostgreSQL
+queue (`FOR UPDATE SKIP LOCKED`, leases, `LISTEN/NOTIFY`), the real worker loop and reconciler, the submit/definition
+API, and the headline proof — a worker killed mid-run recovers to exactly one terminal outcome (ADR-0005).
 
 ## Keeping this page honest
 

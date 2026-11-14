@@ -83,6 +83,7 @@ instead of raising a cast error.
 | Migration | Tables |
 | --- | --- |
 | [`V0001__tenancy_baseline.sql`](../../db/migrations/V0001__tenancy_baseline.sql) | `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events` |
+| [`V0002__task_execution.sql`](../../db/migrations/V0002__task_execution.sql) | `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys` |
 
 `aiep.schema_migrations` (version, name, checksum, applied time) is created by `Aiep.Migrator` itself and is readable
 only by `aiep_migrator`.
@@ -100,7 +101,18 @@ The init script grants SELECT/INSERT/UPDATE/DELETE on every new table to both se
 | `api_keys` | SELECT, INSERT, UPDATE | SELECT | Revocation is `revoked_at`; pre-tenant lookup through `find_api_key` |
 | `audit_events` | SELECT, INSERT | SELECT, INSERT | Plus a trigger that blocks UPDATE/DELETE for everyone |
 
-The worker gets write access to control-plane tables only when Phase 2 needs it, with the reason in that migration.
+### Service-role privileges (V0002)
+
+Both services keep SELECT on every task-execution table (the no-context isolation test reads each table as each role).
+Nothing here is ever deleted by a service.
+
+| Table | `aiep_api` | `aiep_worker` | Notes |
+| --- | --- | --- | --- |
+| `task_definitions` | SELECT, INSERT, UPDATE | SELECT | API authors; worker reads the handler config. Archive is a status change |
+| `task_definition_versions` | SELECT, INSERT, UPDATE | SELECT | UPDATE is for the draft → publish transition; a trigger blocks any UPDATE once published |
+| `task_runs` | SELECT, INSERT, UPDATE | SELECT, UPDATE | API submits and cancels; worker claims, heartbeats and finishes. No service INSERT for the worker |
+| `task_run_attempts` | SELECT | SELECT, INSERT, UPDATE | Written only by the worker; the API reads attempt history |
+| `idempotency_keys` | SELECT, INSERT | SELECT | API records and looks up; worker does not use them |
 
 ### Choices made while building V0001
 
@@ -112,6 +124,23 @@ The worker gets write access to control-plane tables only when Phase 2 needs it,
   There is no free-form payload column, so nothing sensitive can be audited by accident.
 - **`organizations` has no slug.** A globally unique slug would reveal which names other tenants use.
 - **Workspace slugs** are lowercase DNS-label style (`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`), unique per organization.
+
+### Choices made while building V0002 (Phase 2)
+
+- **Status and queue state live on `task_runs`, not a separate queue table** (ADR-0005). There is no outbox for dispatch:
+  a run is enqueued by being inserted `Queued` in the same transaction as acceptance.
+- **`input` and `output` are stored inline as `jsonb`** for the MVP. `run_artifacts` / blob storage (large payloads, logs)
+  is a later phase; the column list here stays honest about what exists.
+- **`error_message` is a short, non-sensitive summary only** (≤ 2000 chars, `CHECK`). Prompts, model outputs and secrets
+  never go in it (CLAUDE.md, ADR-0012); the full input/output are the `input`/`output` columns, not the error.
+- **Task-definition versions are created as a `draft`, then `published`.** A `BEFORE UPDATE` trigger raises once
+  `published_at` is set, so a published version is immutable; the publishing UPDATE itself is allowed because
+  `OLD.published_at` is still NULL at that point. (Same shape as the `audit_events` append-only trigger: a plain,
+  non-`SECURITY DEFINER` trigger function, so no pinned `search_path` is required.)
+- **`idempotency_keys.caller_id`** is the submitting subject id (user) or API-key id (application); the two id spaces are
+  distinct UUIDv7 values, so a single column disambiguates callers without a `caller_type`.
+- **The worker never INSERTs `task_runs`** (only the API submits) and **never writes definitions**; it has UPDATE on
+  `task_runs` for claim/heartbeat/finish and INSERT/UPDATE on `task_run_attempts`. Attempts are worker-only.
 
 ## How services reach tenant data
 
@@ -145,11 +174,11 @@ Each call takes a pooled connection, begins a transaction, runs
 | `memberships` | **Built.** `(organization_id, subject_id)` unique; `org_role`; `status` (`active`, `suspended`). |
 | `workspaces` | **Built.** `slug` unique per organization; `status` (`active`, `archived`, `deleting`); `archived_at` set iff archived. |
 | `workspace_memberships` | **Built.** `(organization_id, workspace_id, subject_id)` unique; `workspace_role`. Composite FK to `memberships` with cascade delete. |
-| `task_definitions` | Stable identity; `current_version`. |
-| `task_definition_versions` | **Immutable** after publish (trigger blocks UPDATE once `published_at` is set). Input and output JSON Schema, `handler_type`, `handler_version`, model config, prompt template, limits, retry policy, capabilities. |
-| `task_runs` | See Spec §13.2 plus `lease_owner`, `lease_expires_at`, `cancel_requested_at`, `traceparent`, `replayed_from_run_id`, `pricing_version`. Partial index on `(next_attempt_at) WHERE status IN ('Queued','RetryWait')`. |
-| `task_run_attempts` | One row per attempt: timing, worker, outcome, error category, provider latency, usage. |
-| `idempotency_keys` | `(organization_id, workspace_id, caller_id, key_hash)` unique → `run_id`, `request_hash`, `expires_at`. |
+| `task_definitions` | **Built.** Workspace-owned; `slug` unique per workspace; `current_version` points at the latest published version number; `status` (`active`, `archived`). |
+| `task_definition_versions` | **Built.** **Immutable** after publish (trigger blocks UPDATE once `published_at` is set). Input and output JSON Schema, `handler_type`/`handler_version` (allowlisted, ADR-0007), `model_provider`/`model_name`/`model_config`, prompt template, and the `max_attempts`/`timeout_seconds`/`lease_seconds` limits. |
+| `task_runs` | **Built.** Status + `next_attempt_at` + `lease_owner`/`lease_expires_at` **are** the queue (ADR-0005). Plus `attempt_count`, `max_attempts`, inline `input`/`output` jsonb, `error_category`/`error_message`, `cancel_requested_at`, `provider_call_may_have_completed`, `traceparent`, `replayed_from_run_id`. Partial indexes on `(next_attempt_at) WHERE status IN ('Queued','RetryWait')` and `(lease_expires_at) WHERE status = 'Running'`. `pricing_version` comes with Phase 4. |
+| `task_run_attempts` | **Built.** One row per attempt, never overwritten: `attempt_number`, `worker_id`, `status`, timing, error category, provider latency, token usage. |
+| `idempotency_keys` | **Built.** `(organization_id, workspace_id, caller_id, key_hash)` unique → `run_id`, `request_hash`, `expires_at`. |
 | `run_artifacts` | Kind (input/output/log), storage path, size, content hash, content type. |
 | `api_keys` | **Built.** `key_id` unique, `secret_hash` (32 bytes), owner, org, optional workspace, `permissions text[]`, `environment`, `expires_at`, `revoked_at`, `last_used_at`. |
 | `provider_connections` | Provider, secret **reference** (Key Vault URI), allowed models. Never the secret. |

@@ -24,6 +24,11 @@ public sealed class AiepDbContext : DbContext
     public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+    public DbSet<TaskDefinition> TaskDefinitions => Set<TaskDefinition>();
+    public DbSet<TaskDefinitionVersion> TaskDefinitionVersions => Set<TaskDefinitionVersion>();
+    public DbSet<TaskRun> TaskRuns => Set<TaskRun>();
+    public DbSet<TaskRunAttempt> TaskRunAttempts => Set<TaskRunAttempt>();
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
 
     internal static AiepDbContext Create(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
@@ -46,6 +51,18 @@ public sealed class AiepDbContext : DbContext
         modelBuilder.Entity<WorkspaceMembership>().ToTable("workspace_memberships");
         modelBuilder.Entity<ApiKey>().ToTable("api_keys");
         modelBuilder.Entity<AuditEvent>().ToTable("audit_events");
+        modelBuilder.Entity<TaskDefinition>().ToTable("task_definitions");
+        modelBuilder.Entity<TaskDefinitionVersion>().ToTable("task_definition_versions");
+        modelBuilder.Entity<TaskRun>().ToTable("task_runs");
+        modelBuilder.Entity<TaskRunAttempt>().ToTable("task_run_attempts");
+        modelBuilder.Entity<IdempotencyKey>().ToTable("idempotency_keys");
+
+        // jsonb columns: stored and read as JSON strings (Application owns their shape).
+        modelBuilder.Entity<TaskDefinitionVersion>().Property(v => v.InputSchema).HasColumnType("jsonb");
+        modelBuilder.Entity<TaskDefinitionVersion>().Property(v => v.OutputSchema).HasColumnType("jsonb");
+        modelBuilder.Entity<TaskDefinitionVersion>().Property(v => v.ModelConfig).HasColumnType("jsonb");
+        modelBuilder.Entity<TaskRun>().Property(r => r.Input).HasColumnType("jsonb");
+        modelBuilder.Entity<TaskRun>().Property(r => r.Output).HasColumnType("jsonb");
 
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         {
