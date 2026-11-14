@@ -17,6 +17,7 @@ public static class ProblemCodes
             StatusCodes.Status403Forbidden => "auth.forbidden",
             StatusCodes.Status404NotFound => "resource.not_found",
             StatusCodes.Status405MethodNotAllowed => "request.method_not_allowed",
+            StatusCodes.Status409Conflict => "resource.conflict",
             StatusCodes.Status429TooManyRequests => "rate_limit.exceeded",
             _ => "server.error",
         });

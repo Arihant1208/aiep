@@ -1,4 +1,7 @@
+using Aiep.Application.Authorization;
+using Aiep.Application.ControlPlane;
 using Aiep.Application.Identity;
+using Aiep.Infrastructure.ControlPlane;
 using Aiep.Infrastructure.Identity;
 using Aiep.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +29,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(sp => new TenantDatabase(sp.GetRequiredService<AiepDataSource>()));
         services.AddSingleton<ISubjectDirectory>(sp => new SubjectDirectory(sp.GetRequiredService<TenantDatabase>()));
         services.AddSingleton<IApiKeyStore>(sp => new ApiKeyStore(sp.GetRequiredService<TenantDatabase>()));
+        services.AddSingleton<IControlPlaneStore>(sp => new ControlPlaneStore(sp.GetRequiredService<TenantDatabase>()));
+        services.AddSingleton<IAuthorizationService, AuthorizationService>();
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 

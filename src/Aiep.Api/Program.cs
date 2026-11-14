@@ -25,6 +25,7 @@ app.MapServiceHealthChecks();
 // Versioned API surface (ADR-0015). Every endpoint requires authentication (fallback policy).
 var v1 = app.MapGroup("/v1");
 v1.MapMeEndpoints();
+v1.MapOrganizationEndpoints();
 
 app.Run();
 
