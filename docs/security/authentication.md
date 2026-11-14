@@ -34,6 +34,30 @@ In Compose, tokens are issued for `http://localhost:8081` (the browser's view) w
 and keys from `http://keycloak:8080` (`Authentication:Oidc:MetadataAddress`). Keycloak's `KC_HOSTNAME` plus
 `KC_HOSTNAME_BACKCHANNEL_DYNAMIC` make both work.
 
+### Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant API as Aiep.Api
+    participant KC as Keycloak (JWKS)
+    participant DB as PostgreSQL
+    C->>API: Authorization: Bearer &lt;JWT&gt;
+    Note over API: Policy scheme: value is not aiep_* → JWT bearer
+    API->>KC: Fetch discovery + JWKS (cached)
+    KC-->>API: Signing keys
+    Note over API: Validate signature (RS256/ES256),<br/>issuer, audience, exp/nbf (30s skew)
+    alt token invalid
+        API-->>C: 401 auth.unauthenticated
+    else token valid
+        API->>DB: aiep.resolve_subject(iss, sub, name, email)<br/>SECURITY DEFINER, no tenant context
+        DB-->>API: subject_id (created on first sign-in)
+        Note over API: Replace principal → {aiep:subject_id, aiep:auth_method};<br/>all token claims, roles and groups discarded
+        API-->>C: Authorized request proceeds
+    end
+```
+
 ## Applications: API keys
 
 Format `aiep_<environment>_<keyId>_<secret>`, all lowercase Crockford base32:
@@ -57,6 +81,30 @@ allows a cache of up to 30 s if lookups become a hot spot.
 **Failures all look the same:** 401 with `code: auth.unauthenticated`. The reason (`Malformed`, `WrongEnvironment`,
 `UnknownKey`, `InvalidSecret`, `Revoked`, `Expired`, `OwnerNoLongerMember`) goes to logs and the trace tag
 `aiep.auth.failure`. The key itself is never logged.
+
+### Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant API as Aiep.Api
+    participant DB as PostgreSQL
+    C->>API: Authorization: Bearer aiep_&lt;env&gt;_&lt;keyId&gt;_&lt;secret&gt;
+    Note over API: Policy scheme: value is aiep_* → API key handler
+    Note over API: Parse format; reject a key for another environment<br/>before any lookup
+    API->>DB: aiep.find_api_key(keyId)<br/>pre-tenant, SECURITY DEFINER
+    DB-->>API: stored key row, or none
+    Note over API: HMAC-SHA-256(secret, pepper) — hashed even when<br/>unknown so timing hides valid key ids; constant-time compare
+    Note over API: not revoked? not expired?
+    API->>DB: owner still has an active membership in the key's org?
+    DB-->>API: yes / no (+ throttled last_used_at write)
+    alt any check fails
+        API-->>C: 401 auth.unauthenticated<br/>(reason only to logs + trace tag)
+    else all checks pass
+        API-->>C: Authorized; principal = owner subject + key scope ceiling
+    end
+```
 
 **Keys in URLs are refused** with 400 `auth.credentials_in_url`, even if the header is also valid, because URLs end up
 in proxy logs and browser history. Parameters named `access_token`, `id_token`, `api_key`, `apikey`, `key` or `token`,

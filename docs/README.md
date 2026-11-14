@@ -7,6 +7,7 @@ what we decided against, and what we still have to decide.
 
 | Area | What lives there | Start with |
 | --- | --- | --- |
+| [Current state](status.md) | What is built and verified **right now**, updated each slice | [Status](status.md) |
 | [Decisions (ADRs)](adr/README.md) | One page per significant decision: context, choice, trade-offs, alternatives | [ADR index](adr/README.md) |
 | [Product](product/vision-and-scope.md) | Product promise, personas, MVP scope and non-goals | [Vision and scope](product/vision-and-scope.md) |
 | [Architecture](architecture/overview.md) | Components, deployable units, module boundaries, flows | [Overview](architecture/overview.md), [Task lifecycle](architecture/task-lifecycle.md) |
