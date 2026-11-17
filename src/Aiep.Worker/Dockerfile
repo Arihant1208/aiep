@@ -6,7 +6,7 @@ COPY src/ src/
 RUN dotnet publish src/Aiep.Worker/Aiep.Worker.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # aspnet base because ServiceDefaults references the ASP.NET Core shared framework.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 USER $APP_UID
