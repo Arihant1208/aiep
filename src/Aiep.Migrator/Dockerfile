@@ -6,7 +6,7 @@ COPY src/ src/
 COPY db/migrations/ db/migrations/
 RUN dotnet publish src/Aiep.Migrator/Aiep.Migrator.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:11.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 USER $APP_UID
