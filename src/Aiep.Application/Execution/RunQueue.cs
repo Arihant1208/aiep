@@ -60,6 +60,8 @@ public sealed record RunSettlement(
     string? ErrorMessage = null,
     DateTimeOffset? NextAttemptAt = null,
     ModelUsage? Usage = null,
+    decimal? CostUsd = null,
+    Guid? PricingId = null,
     bool ProviderCallMayHaveCompleted = false);
 
 /// <summary>

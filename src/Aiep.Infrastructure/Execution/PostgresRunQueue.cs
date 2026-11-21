@@ -136,6 +136,8 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
                     lease_expires_at = NULL,
                     provider_call_may_have_completed = $7,
                     completed_at = CASE WHEN $8 THEN now() ELSE completed_at END,
+                    cost_usd = COALESCE($10, cost_usd),
+                    pricing_id = COALESCE($11, pricing_id),
                     updated_at = now()
                 WHERE id = $1 AND status = 'Running' AND lease_owner = $9
                 """, session.Connection, session.Transaction);
@@ -152,6 +154,8 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
             runUpdate.Parameters.Add(new NpgsqlParameter { Value = settlement.ProviderCallMayHaveCompleted });
             runUpdate.Parameters.Add(new NpgsqlParameter { Value = terminal });
             runUpdate.Parameters.Add(new NpgsqlParameter { Value = settlement.WorkerId });
+            runUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.CostUsd ?? DBNull.Value });
+            runUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.PricingId ?? DBNull.Value });
 
             var affected = await runUpdate.ExecuteNonQueryAsync(token);
             if (affected == 0)
@@ -164,7 +168,8 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
                 """
                 UPDATE aiep.task_run_attempts
                 SET status = $2, ended_at = now(), error_category = $3, error_message = $4,
-                    provider_latency_ms = $5, input_tokens = $6, output_tokens = $7
+                    provider_latency_ms = $5, input_tokens = $6, output_tokens = $7,
+                    cost_usd = $8, pricing_id = $9
                 WHERE id = $1 AND status = 'running'
                 """, session.Connection, session.Transaction);
             attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = settlement.AttemptId });
@@ -179,6 +184,8 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
             });
             attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.Usage?.InputTokens ?? DBNull.Value });
             attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.Usage?.OutputTokens ?? DBNull.Value });
+            attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.CostUsd ?? DBNull.Value });
+            attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.PricingId ?? DBNull.Value });
             await attemptUpdate.ExecuteNonQueryAsync(token);
         }, cancellationToken);
 

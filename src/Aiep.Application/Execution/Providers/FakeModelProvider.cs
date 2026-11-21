@@ -19,14 +19,23 @@ public sealed class FakeModelProvider : IModelProvider
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var (latency, outputFactor) = ProfileOf(request.Model);
         var text = $"echo:{request.Model}:{Fingerprint(request.Prompt)}";
         var response = new ModelResponse(
             text,
             InputTokens: EstimateTokens(request.Prompt),
-            OutputTokens: EstimateTokens(text),
-            Latency: TimeSpan.FromMilliseconds(5));
+            OutputTokens: Math.Max(1, (int)(EstimateTokens(text) * outputFactor)),
+            Latency: latency);
         return Task.FromResult(response);
     }
+
+    // Deterministic per-model profiles so two configurations differ measurably in latency and tokens (hence cost).
+    private static (TimeSpan Latency, double OutputFactor) ProfileOf(string model) => model switch
+    {
+        "fake-sonnet" => (TimeSpan.FromMilliseconds(40), 2.0),
+        "fake-haiku" => (TimeSpan.FromMilliseconds(12), 1.0),
+        _ => (TimeSpan.FromMilliseconds(5), 1.0),
+    };
 
     // ~4 characters per token, at least one.
     private static int EstimateTokens(string text) => Math.Max(1, text.Length / 4);

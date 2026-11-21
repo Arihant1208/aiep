@@ -53,7 +53,7 @@ public sealed class RunExecutorTests(PostgresFixture db) : IAsyncLifetime
     private IRunQueue WorkerQueue => _worker.GetRequiredService<IRunQueue>();
 
     private RunExecutor Executor(IHandlerRegistry registry) =>
-        new(WorkerQueue, registry, TimeProvider.System);
+        new(WorkerQueue, registry, _worker.GetRequiredService<IPricing>(), TimeProvider.System);
 
     private Task<Guid> EnqueueAsync(Guid versionId, int maxAttempts = 3) =>
         _api.GetRequiredService<IRunQueue>().EnqueueAsync(

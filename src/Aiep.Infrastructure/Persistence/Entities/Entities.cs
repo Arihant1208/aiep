@@ -163,6 +163,8 @@ public sealed class TaskRun
     public Guid? ReplayedFromRunId { get; set; }
     public DateTimeOffset? StartedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
+    public decimal? CostUsd { get; set; }
+    public Guid? PricingId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -182,8 +184,22 @@ public sealed class TaskRunAttempt
     public int? ProviderLatencyMs { get; set; }
     public int? InputTokens { get; set; }
     public int? OutputTokens { get; set; }
+    public decimal? CostUsd { get; set; }
+    public Guid? PricingId { get; set; }
     public DateTimeOffset StartedAt { get; set; }
     public DateTimeOffset? EndedAt { get; set; }
+}
+
+public sealed class ModelPricing
+{
+    public Guid Id { get; set; }
+    public required string Provider { get; set; }
+    public required string Model { get; set; }
+    public DateTimeOffset EffectiveFrom { get; set; }
+    public decimal InputPricePerMtok { get; set; }
+    public decimal OutputPricePerMtok { get; set; }
+    public string? SourceUrl { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
 public sealed class IdempotencyKey

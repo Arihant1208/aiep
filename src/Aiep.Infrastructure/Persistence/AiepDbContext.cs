@@ -29,6 +29,7 @@ public sealed class AiepDbContext : DbContext
     public DbSet<TaskRun> TaskRuns => Set<TaskRun>();
     public DbSet<TaskRunAttempt> TaskRunAttempts => Set<TaskRunAttempt>();
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+    public DbSet<ModelPricing> ModelPricing => Set<ModelPricing>();
 
     internal static AiepDbContext Create(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
@@ -56,6 +57,13 @@ public sealed class AiepDbContext : DbContext
         modelBuilder.Entity<TaskRun>().ToTable("task_runs");
         modelBuilder.Entity<TaskRunAttempt>().ToTable("task_run_attempts");
         modelBuilder.Entity<IdempotencyKey>().ToTable("idempotency_keys");
+        modelBuilder.Entity<ModelPricing>().ToTable("model_pricing");
+
+        // Money columns map to the numeric types in the schema.
+        modelBuilder.Entity<ModelPricing>().Property(p => p.InputPricePerMtok).HasColumnType("numeric(12,4)");
+        modelBuilder.Entity<ModelPricing>().Property(p => p.OutputPricePerMtok).HasColumnType("numeric(12,4)");
+        modelBuilder.Entity<TaskRun>().Property(r => r.CostUsd).HasColumnType("numeric(12,6)");
+        modelBuilder.Entity<TaskRunAttempt>().Property(a => a.CostUsd).HasColumnType("numeric(12,6)");
 
         // jsonb columns: stored and read as JSON strings (Application owns their shape).
         modelBuilder.Entity<TaskDefinitionVersion>().Property(v => v.InputSchema).HasColumnType("jsonb");

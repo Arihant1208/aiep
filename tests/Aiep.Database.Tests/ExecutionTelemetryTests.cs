@@ -62,7 +62,8 @@ public sealed class ExecutionTelemetryTests(PostgresFixture db) : IAsyncLifetime
     private IRunQueue WorkerQueue => _worker.GetRequiredService<IRunQueue>();
 
     private RunExecutor Executor() =>
-        new(WorkerQueue, new HandlerRegistry([new CompletionHandler([new FakeModelProvider()])]), TimeProvider.System);
+        new(WorkerQueue, new HandlerRegistry([new CompletionHandler([new FakeModelProvider()])]),
+            _worker.GetRequiredService<IPricing>(), TimeProvider.System);
 
     private Task<Guid> EnqueueAsync(string? traceparent) =>
         _api.GetRequiredService<IRunQueue>().EnqueueAsync(

@@ -12,7 +12,7 @@ public sealed class TenantIsolationTests(PostgresFixture db)
     private readonly TenantDb _tdb = new(db);
 
     /// <summary>Tables that are deliberately not tenant-owned, with the reason documented in V0001.</summary>
-    private static readonly HashSet<string> GlobalTables = ["schema_migrations", "subjects"];
+    private static readonly HashSet<string> GlobalTables = ["schema_migrations", "subjects", "model_pricing"];
 
     private async Task<List<string>> TenantTablesAsync()
     {

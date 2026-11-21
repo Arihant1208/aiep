@@ -8,7 +8,7 @@ namespace Aiep.Application.Execution;
 /// the lease, then settle the outcome using the Domain's retry classification and backoff. Pure orchestration over the
 /// ports (no host or database dependency), so it can be driven by the worker loop and tested directly.
 /// </summary>
-public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, TimeProvider time)
+public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, IPricing pricing, TimeProvider time)
 {
     /// <summary>Executes and settles the run. Returns the terminal/retry status it settled, or null if it abandoned the
     /// run (lease lost or the worker is shutting down) and left recovery to the reconciler.</summary>
@@ -86,7 +86,9 @@ public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, Time
             ExecutionTelemetry.ProviderLatency.Record(
                 result.Usage.ProviderLatency.TotalMilliseconds,
                 new TagList { { "model_provider", run.ModelProvider }, { "model_name", run.ModelName } });
-            await queue.SettleAsync(Success(run, result), stoppingToken);
+
+            var price = await pricing.ResolveAsync(run.ModelProvider, run.ModelName, stoppingToken);
+            await queue.SettleAsync(Success(run, result, price), stoppingToken);
             return TaskRunStatus.Succeeded;
         }
         catch (OperationCanceledException) when (cancelRequested)
@@ -195,9 +197,10 @@ public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, Time
         return TaskRunStatus.RetryWait;
     }
 
-    private static RunSettlement Success(ClaimedRun run, HandlerResult result) => new(
+    private static RunSettlement Success(ClaimedRun run, HandlerResult result, PricingSnapshot? price) => new(
         run.OrganizationId, run.WorkspaceId, run.RunId, run.AttemptId, run.WorkerId,
-        TaskRunStatus.Succeeded, "succeeded", OutputJson: result.OutputJson, Usage: result.Usage);
+        TaskRunStatus.Succeeded, "succeeded", OutputJson: result.OutputJson, Usage: result.Usage,
+        CostUsd: price?.CostFor(result.Usage.InputTokens, result.Usage.OutputTokens), PricingId: price?.Id);
 
     private static RunSettlement Cancelled(ClaimedRun run) => new(
         run.OrganizationId, run.WorkspaceId, run.RunId, run.AttemptId, run.WorkerId,

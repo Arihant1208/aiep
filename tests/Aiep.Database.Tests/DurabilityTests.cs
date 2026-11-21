@@ -57,7 +57,8 @@ public sealed class DurabilityTests(PostgresFixture db) : IAsyncLifetime
     private IRunStore ApiRuns => _api.GetRequiredService<IRunStore>();
 
     private RunExecutor Executor() =>
-        new(WorkerQueue, new HandlerRegistry([new CompletionHandler([new FakeModelProvider()])]), TimeProvider.System);
+        new(WorkerQueue, new HandlerRegistry([new CompletionHandler([new FakeModelProvider()])]),
+            _worker.GetRequiredService<IPricing>(), TimeProvider.System);
 
     private TenantContext OrgContext => TenantContext.ForOrganization(_tenant.OrganizationId, _tenant.OwnerId);
 

@@ -87,6 +87,7 @@ instead of raising a cast error.
 | [`V0003__queue_operations.sql`](../../db/migrations/V0003__queue_operations.sql) | (no tables) `claim_next_run`, `reconcile_expired_leases` `SECURITY DEFINER` functions + their definer RLS policies |
 | [`V0004__claim_returns_traceparent.sql`](../../db/migrations/V0004__claim_returns_traceparent.sql) | (no tables) `claim_next_run` returns the stored `traceparent` for span linking (ADR-0012) |
 | [`V0005__purge_expired.sql`](../../db/migrations/V0005__purge_expired.sql) | (no tables) `purge_expired` `SECURITY DEFINER` retention sweep + `idempotency_keys` definer-purge policy |
+| [`V0006__pricing_and_cost.sql`](../../db/migrations/V0006__pricing_and_cost.sql) | `model_pricing` (global, seeded); adds `cost_usd`/`pricing_id` to `task_runs` and `task_run_attempts` |
 
 `aiep.schema_migrations` (version, name, checksum, applied time) is created by `Aiep.Migrator` itself and is readable
 only by `aiep_migrator`.
@@ -200,7 +201,7 @@ Each call takes a pooled connection, begins a transaction, runs
 | `quota_reservations` | Reserve-then-settle ledger per run. |
 | `evaluation_suites` / `_versions` / `evaluation_runs` / `evaluation_results` | Versioned datasets, scorer versions, per-example results. |
 | `audit_events` | **Built.** Append-only: actor, action, target, org, workspace, outcome, reason, correlation ID, timestamp. Services get INSERT/SELECT only; a trigger blocks UPDATE/DELETE. |
-| `model_pricing` | Provider, model, `effective_from`, prices, source URL. Global (not tenant-owned). |
+| `model_pricing` | **Built.** Provider, model, `effective_from`, input/output price per Mtok, source URL. Global (not tenant-owned, no RLS); services read only, a migration seeds it. A run's `cost_usd` records the `pricing_id` it used. |
 
 ## Open questions
 

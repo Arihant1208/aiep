@@ -54,6 +54,8 @@ public static class InfrastructureServiceCollectionExtensions
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IRunStore>(sp => new RunStore(
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IPricing>(sp => new PricingStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 
