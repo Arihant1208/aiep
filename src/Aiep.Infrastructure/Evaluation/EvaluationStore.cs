@@ -127,6 +127,41 @@ internal sealed class EvaluationStore(TenantDatabase database, TimeProvider time
             return ToView(row);
         }, cancellationToken);
 
+    public Task<EvaluationSuiteVersionView?> GetSuiteVersionAsync(
+        Guid organizationId, Guid subjectId, Guid workspaceId, Guid suiteId, int version, CancellationToken cancellationToken = default) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, subjectId), async (session, token) =>
+        {
+            var row = await session.Db.EvaluationSuiteVersions.AsNoTracking()
+                .SingleOrDefaultAsync(v => v.WorkspaceId == workspaceId && v.SuiteId == suiteId && v.Version == version, token);
+            return row is null ? null : ToView(row);
+        }, cancellationToken);
+
+    public Task<IReadOnlyList<EvaluationResultRow>?> ListResultsAsync(
+        Guid organizationId, Guid subjectId, Guid workspaceId, Guid evaluationRunId, CancellationToken cancellationToken = default) =>
+        database.ExecuteAsync(TenantContext.ForOrganization(organizationId, subjectId), async (session, token) =>
+        {
+            var run = await session.Db.EvaluationRuns.AsNoTracking()
+                .SingleOrDefaultAsync(r => r.WorkspaceId == workspaceId && r.Id == evaluationRunId, token);
+            if (run is null)
+            {
+                return (IReadOnlyList<EvaluationResultRow>?)null;
+            }
+
+            var results = await session.Db.EvaluationResults.AsNoTracking()
+                .Where(r => r.EvaluationRunId == evaluationRunId).OrderBy(r => r.ExampleOrdinal).ToListAsync(token);
+            var runIds = results.Select(r => r.TaskRunId).ToList();
+            var taskRuns = await session.Db.TaskRuns.AsNoTracking()
+                .Where(r => runIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, token);
+
+            var rows = results.Select(r =>
+            {
+                var taskRun = taskRuns[r.TaskRunId];
+                double? latency = taskRun.StartedAt is { } s && taskRun.CompletedAt is { } c ? (c - s).TotalMilliseconds : null;
+                return new EvaluationResultRow(r.ExampleOrdinal, taskRun.Status, r.Passed, r.Score, latency, taskRun.CostUsd);
+            }).ToList();
+            return (IReadOnlyList<EvaluationResultRow>?)rows;
+        }, cancellationToken);
+
     public Task<EvaluationRunView?> CreateEvaluationRunAsync(
         ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid suiteVersionId, Guid taskDefinitionVersionId,
         CancellationToken cancellationToken = default) =>

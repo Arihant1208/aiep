@@ -35,8 +35,12 @@ quality/latency/cost gradient with no spend; the real Anthropic adapter stays a 
 
 ### 3. Comparison and export (headline)
 
-- [ ] Compare two eval runs (two configurations) on one dataset: quality, latency (p50/p95) and cost per configuration
-- [ ] Raw per-example results exported as CSV/JSON (ADR-0014); API endpoints. Tests prove the exit criterion
+- [x] Evaluation API (ADR-0015): dataset authoring (suites, versions, publish), create/get an evaluation run (scored on
+  read), per-example results export as JSON or CSV, and `GET …/evaluation-runs/compare?a=&b=` which scores both and returns
+  each configuration's summary side by side (rejecting a cross-dataset comparison with 400)
+- [x] The exit criterion, proven in `EvaluationTests.Two_configurations_on_one_dataset_differ_in_cost`: one dataset, two
+  model profiles, executed and scored, with the costlier profile measurably costlier. API contract covered by
+  `EvaluationEndpointsTests`. Full suite 343 green
 
 ### 4. Cost governance
 

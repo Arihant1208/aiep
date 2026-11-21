@@ -4,7 +4,7 @@
 vertical slice. This page links to canonical docs rather than repeating them.*
 
 **As of:** 2026-11-21 · **Phase:** 4 **in progress** (evaluation and cost governance); Phases 0–3 complete ·
-**Latest commit:** `Add the evaluation engine: datasets, scorers, scoring (Phase 4, slice 2)`.
+**Latest commit:** `Compare two configurations on a dataset (Phase 4, slice 3)`.
 
 ## In one paragraph
 
@@ -38,7 +38,7 @@ Full local stack: [`docker compose --profile app up -d --build`](development/loc
 - **Domain** — `TaskRunStatus` + `TaskRunTransitions` state machine (single source of truth; [task lifecycle](architecture/task-lifecycle.md)); `ErrorCategory` retry classification and `RetryBackoff` / `RetryPolicy` (full-jitter exponential backoff).
 - **Application** — `TenantContext`; identity primitives (API-key format/hashing, `ExternalIdentity`); resource-ID encoding ([`ResourceId`](../src/Aiep.Application/Ids/ResourceId.cs)); the [authorization model](security/authorization-model.md) (`Permission`, `RolePermissions`, `AuthorizationSubject`, `IAuthorizationService`, `AuthorizationInvariants`); the control-plane port `IControlPlaneStore`; the execution ports `IModelProvider` (with the deterministic `FakeModelProvider`, ADR-0009), `ITaskHandler` / `IHandlerRegistry` allowlist and the `completion` handler (ADR-0007); the queue ports `IRunQueue` and `IIdempotencyStore` (ADR-0005, ADR-0015); `RunExecutor`, the worker's execution orchestration; pricing (`IPricing`) and evaluation (`IEvaluationStore`, versioned `IScorer`, ADR-0009/0014).
 - **Infrastructure** — `TenantDatabase` unit of work (the **only** path to tenant data: transaction-local `set_config`, EF `AiepDbContext` bound to that connection); API-key store, subject directory and `ControlPlaneStore` over the unit of work and `SECURITY DEFINER` lookups ([ADR-0017](adr/0017-pre-tenant-operations-security-definer.md)); `PostgresRunQueue` and the idempotency store over the V0003 `claim_next_run` / `reconcile_expired_leases` definer functions.
-- **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)); the `/v1` [control-plane endpoints](api/control-plane.md) (organizations, members, workspaces, grants, API keys, `/me`, `/me/permissions`) with `EndpointAuth` (resolve + authorize) and `CodedProblem`; Problem Details with stable `code`s; correlation-id and credentials-in-URL middleware. The [task-execution API](api/task-execution.md): task-definition and version authoring and runs (`POST …/runs` with `Idempotency-Key`, get, list, cancel), workspace-scoped with result-read gating.
+- **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)); the `/v1` [control-plane endpoints](api/control-plane.md) (organizations, members, workspaces, grants, API keys, `/me`, `/me/permissions`) with `EndpointAuth` (resolve + authorize) and `CodedProblem`; Problem Details with stable `code`s; correlation-id and credentials-in-URL middleware. The [task-execution API](api/task-execution.md): task-definition and version authoring and runs (`POST …/runs` with `Idempotency-Key`, get, list, cancel), workspace-scoped with result-read gating. Evaluation: dataset authoring, evaluation runs, per-example results export (JSON/CSV) and a two-configuration comparison (`…/evaluation-runs/compare`).
 - **Worker** — `RunWorker` loop (claim → execute → settle, with LISTEN/NOTIFY wake) and `ReconcilerService` (expired-lease recovery) and `MaintenanceService` (retention purge of expired idempotency keys and old terminal runs), hosting `RunExecutor`. Execution emits an `Aiep.Execution` span linked to the run's stored `traceparent` and `Aiep.Runs` metrics, payload-free ([observability](architecture/observability.md), ADR-0012), and records each run's `cost_usd` from usage and the versioned `model_pricing` row (ADR-0009).
 - **Data** — V0001: `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events`. V0002: `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys`. V0003: the `claim_next_run` and `reconcile_expired_leases` queue functions. V0004–V0006: traceparent in the claim, the `purge_expired` retention sweep, and `model_pricing` + per-run cost ([data model](data/data-model.md)).
 
@@ -56,9 +56,9 @@ with the permission, status codes and audit action for each endpoint.
 | `Aiep.Domain.Tests` | 42 | Run state machine; retry classification and full-jitter backoff |
 | `Aiep.Application.Tests` | 72 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code); fake provider, completion handler and handler-registry allowlist |
 | `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
-| `Aiep.Database.Tests` | 130 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash; execution telemetry (linked spans, payload-free metrics); retention purge (expired keys, old terminal runs); output payload limit; model pricing and per-run cost; the evaluation engine (fan-out, scoring, summary) |
-| `Aiep.Api.Tests` | 91 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, and the task-definition / run endpoints (authoring, idempotency, cancel), against real Postgres + Keycloak |
-| **Total** | **339** | |
+| `Aiep.Database.Tests` | 131 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash; execution telemetry (linked spans, payload-free metrics); retention purge (expired keys, old terminal runs); output payload limit; model pricing and per-run cost; the evaluation engine (fan-out, scoring, summary); the two-configuration cost comparison |
+| `Aiep.Api.Tests` | 94 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, the task-definition / run endpoints (authoring, idempotency, cancel), and the evaluation endpoints (authoring, comparison guard), against real Postgres + Keycloak |
+| **Total** | **343** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -69,11 +69,10 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-**Phases 0–3 are complete.** **Phase 4 is in progress** ([checklist](roadmap/phase-4.md)): slices 1–2 landed model pricing
-and per-run cost, and the evaluation engine (datasets, versioned .NET scorers, eval-run fan-out and scoring with a summary
-of exact-match rate, latency and cost). Still to come: the two-configuration comparison report and export (the exit
-criterion), and reserve-then-settle quota enforcement (threat T12). The real Anthropic adapter stays a drop-in behind
-`IModelProvider`.
+**Phases 0–3 are complete.** **Phase 4 is in progress** ([checklist](roadmap/phase-4.md)): the exit criterion is met —
+pricing and per-run cost, the evaluation engine, and the **two-configuration comparison** (one dataset, two model
+profiles, explained by quality/latency/cost) with JSON/CSV export. Remaining: reserve-then-settle quota enforcement
+(cost governance, threat T12). The real Anthropic adapter stays a drop-in behind `IModelProvider`.
 
 ## Keeping this page honest
 

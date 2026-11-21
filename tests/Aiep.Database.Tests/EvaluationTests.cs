@@ -2,6 +2,8 @@ using System.Text.Json;
 using Aiep.Application.ControlPlane;
 using Aiep.Application.Evaluation;
 using Aiep.Application.Execution;
+using Aiep.Application.Execution.Handlers;
+using Aiep.Application.Execution.Providers;
 using Aiep.Domain.Runs;
 using Aiep.Infrastructure;
 using Microsoft.Extensions.Configuration;
@@ -62,12 +64,41 @@ public sealed class EvaluationTests(PostgresFixture db) : IAsyncLifetime
         _worker.GetRequiredService<IPricing>(),
         TimeProvider.System);
 
-    private async Task ExecuteAllQueuedAsync()
+    // The real completion handler over the fake provider, so the two model profiles produce different tokens and cost.
+    private RunExecutor RealExecutor() => new(
+        WorkerQueue,
+        new HandlerRegistry([new CompletionHandler([new FakeModelProvider()])]),
+        _worker.GetRequiredService<IPricing>(),
+        TimeProvider.System);
+
+    private async Task ExecuteAllQueuedAsync(RunExecutor? executor = null)
     {
+        executor ??= Executor();
         while (await WorkerQueue.ClaimAsync("worker-1") is { } claimed)
         {
-            await Executor().ExecuteAsync(claimed, CancellationToken.None);
+            await executor.ExecuteAsync(claimed, CancellationToken.None);
         }
+    }
+
+    private async Task<Guid> CreateDefinitionVersionAsync(string model, int versionNumber)
+    {
+        var id = Guid.CreateVersion7();
+        await _tdb.RunAsync("aiep_api", _tenant.OrganizationId, _tenant.OwnerId, c => TenantDb.ExecuteAsync(c,
+            """
+            INSERT INTO aiep.task_definition_versions
+                (id, organization_id, workspace_id, task_definition_id, version, status,
+                 input_schema, output_schema, handler_type, handler_version, model_provider, model_name, published_at, created_by)
+            VALUES ($1, $2, $3, $4, $5, 'published',
+                    '{}'::jsonb, '{}'::jsonb, 'completion', '1', 'fake', $6, now(), $7)
+            """,
+            id, _tenant.OrganizationId, _tenant.WorkspaceId, _tenant.TaskDefinitionId, versionNumber, model, _tenant.OwnerId));
+        return id;
+    }
+
+    private static decimal TotalCost(string summaryJson)
+    {
+        using var summary = JsonDocument.Parse(summaryJson);
+        return summary.RootElement.GetProperty("totalCostUsd").GetDecimal();
     }
 
     private async Task<Guid> PublishedSuiteVersionAsync(string examplesJson)
@@ -100,6 +131,28 @@ public sealed class EvaluationTests(PostgresFixture db) : IAsyncLifetime
         Assert.Equal(2, root.GetProperty("exampleCount").GetInt32());
         Assert.Equal(2, root.GetProperty("succeeded").GetInt32());
         Assert.Equal(0.5m, root.GetProperty("exactMatchRate").GetDecimal());
+    }
+
+    [Fact]
+    public async Task Two_configurations_on_one_dataset_differ_in_cost()
+    {
+        // One dataset, two configurations (a costlier and a cheaper model profile) -- the Phase 4 headline.
+        var suiteVersion = await PublishedSuiteVersionAsync(
+            """[{"input":{"q":"a"},"expected":{"a":1}},{"input":{"q":"b"},"expected":{"a":2}}]""");
+        var sonnet = await CreateDefinitionVersionAsync("fake-sonnet", 2);
+        var haiku = await CreateDefinitionVersionAsync("fake-haiku", 3);
+
+        var runSonnet = (await Evaluations.CreateEvaluationRunAsync(Actor, _tenant.OrganizationId, _tenant.WorkspaceId, suiteVersion, sonnet))!;
+        var runHaiku = (await Evaluations.CreateEvaluationRunAsync(Actor, _tenant.OrganizationId, _tenant.WorkspaceId, suiteVersion, haiku))!;
+        await ExecuteAllQueuedAsync(RealExecutor());
+
+        var scoredSonnet = (await Evaluations.ScoreAsync(_tenant.OrganizationId, _tenant.OwnerId, _tenant.WorkspaceId, runSonnet.Id))!;
+        var scoredHaiku = (await Evaluations.ScoreAsync(_tenant.OrganizationId, _tenant.OwnerId, _tenant.WorkspaceId, runHaiku.Id))!;
+
+        Assert.Equal("Completed", scoredSonnet.Status);
+        Assert.Equal("Completed", scoredHaiku.Status);
+        Assert.True(TotalCost(scoredSonnet.Summary!) > TotalCost(scoredHaiku.Summary!),
+            $"expected fake-sonnet to cost more: {scoredSonnet.Summary} vs {scoredHaiku.Summary}");
     }
 
     [Fact]

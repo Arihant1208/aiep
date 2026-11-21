@@ -14,6 +14,10 @@ public sealed record EvaluationRunView(
     Guid Id, Guid SuiteVersionId, Guid TaskDefinitionVersionId, string Status, int ExampleCount, string? Summary,
     DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt);
 
+/// <summary>One per-example row for export (ADR-0014): the raw result anyone can re-analyse outside the platform.</summary>
+public sealed record EvaluationResultRow(
+    int ExampleOrdinal, string TaskRunStatus, bool? Passed, string? Score, double? LatencyMs, decimal? CostUsd);
+
 /// <summary>
 /// Evaluation datasets and runs over the tenant unit of work (ADR-0014). Creating a run fans out one task_run per
 /// example; scoring runs the versioned scorers over the completed task_runs and writes the per-example results and the
@@ -40,6 +44,9 @@ public interface IEvaluationStore
         ControlPlaneActor actor, Guid organizationId, Guid workspaceId, Guid suiteId, int version,
         CancellationToken cancellationToken = default);
 
+    Task<EvaluationSuiteVersionView?> GetSuiteVersionAsync(
+        Guid organizationId, Guid subjectId, Guid workspaceId, Guid suiteId, int version, CancellationToken cancellationToken = default);
+
     /// <summary>Starts an evaluation run: enqueues one task_run per example against the task-definition version. Null if the
     /// suite version or the definition version is missing or unpublished.</summary>
     Task<EvaluationRunView?> CreateEvaluationRunAsync(
@@ -52,5 +59,9 @@ public interface IEvaluationStore
         Guid organizationId, Guid subjectId, Guid workspaceId, Guid evaluationRunId, CancellationToken cancellationToken = default);
 
     Task<EvaluationRunView?> GetEvaluationRunAsync(
+        Guid organizationId, Guid subjectId, Guid workspaceId, Guid evaluationRunId, CancellationToken cancellationToken = default);
+
+    /// <summary>Per-example rows for an evaluation run (export). Null if the run is not in the workspace.</summary>
+    Task<IReadOnlyList<EvaluationResultRow>?> ListResultsAsync(
         Guid organizationId, Guid subjectId, Guid workspaceId, Guid evaluationRunId, CancellationToken cancellationToken = default);
 }

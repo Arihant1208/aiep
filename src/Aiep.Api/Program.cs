@@ -31,6 +31,7 @@ v1.MapMemberEndpoints();
 v1.MapApiKeyEndpoints();
 v1.MapTaskDefinitionEndpoints();
 v1.MapRunEndpoints();
+v1.MapEvaluationEndpoints();
 
 app.Run();
 
