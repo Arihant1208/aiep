@@ -30,6 +30,10 @@ public sealed class AiepDbContext : DbContext
     public DbSet<TaskRunAttempt> TaskRunAttempts => Set<TaskRunAttempt>();
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
     public DbSet<ModelPricing> ModelPricing => Set<ModelPricing>();
+    public DbSet<EvaluationSuite> EvaluationSuites => Set<EvaluationSuite>();
+    public DbSet<EvaluationSuiteVersion> EvaluationSuiteVersions => Set<EvaluationSuiteVersion>();
+    public DbSet<EvaluationRun> EvaluationRuns => Set<EvaluationRun>();
+    public DbSet<EvaluationResult> EvaluationResults => Set<EvaluationResult>();
 
     internal static AiepDbContext Create(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
@@ -58,6 +62,13 @@ public sealed class AiepDbContext : DbContext
         modelBuilder.Entity<TaskRunAttempt>().ToTable("task_run_attempts");
         modelBuilder.Entity<IdempotencyKey>().ToTable("idempotency_keys");
         modelBuilder.Entity<ModelPricing>().ToTable("model_pricing");
+        modelBuilder.Entity<EvaluationSuite>().ToTable("evaluation_suites");
+        modelBuilder.Entity<EvaluationSuiteVersion>().ToTable("evaluation_suite_versions");
+        modelBuilder.Entity<EvaluationRun>().ToTable("evaluation_runs");
+        modelBuilder.Entity<EvaluationResult>().ToTable("evaluation_results");
+        modelBuilder.Entity<EvaluationSuiteVersion>().Property(v => v.Examples).HasColumnType("jsonb");
+        modelBuilder.Entity<EvaluationRun>().Property(r => r.Summary).HasColumnType("jsonb");
+        modelBuilder.Entity<EvaluationResult>().Property(r => r.Score).HasColumnType("jsonb");
 
         // Money columns map to the numeric types in the schema.
         modelBuilder.Entity<ModelPricing>().Property(p => p.InputPricePerMtok).HasColumnType("numeric(12,4)");

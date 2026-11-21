@@ -24,10 +24,14 @@ quality/latency/cost gradient with no spend; the real Anthropic adapter stays a 
 
 ### 2. Evaluation
 
-- [ ] Datasets: evaluation suites → versions → examples (input + expected output), workspace-scoped
-- [ ] Eval-run orchestration: run a task-definition version against every example (one run each), then score
-- [ ] Versioned .NET scorers (exact-match, schema-valid rate, latency/cost aggregation); per-example results record the
-  scorer version. Tests
+- [x] Datasets (V0007): evaluation suites → immutable versions holding examples (`[{input, expected}]`), workspace-scoped,
+  with the same publish/immutability pattern as task definitions
+- [x] `IEvaluationStore` / `EvaluationStore`: creating an evaluation run fans out one task_run per example against the
+  task-definition version (the worker executes them like any run); `ScoreAsync` runs the versioned scorers over the
+  completed task_runs, writes per-example results and the run summary, and is idempotent / waits until all task_runs finish
+- [x] Versioned `IScorer` (`ExactMatchScorer`, deep JSON equality); summary aggregates exact-match rate, succeeded count,
+  avg/p95 latency and total/avg cost. `EvaluationTests` prove fan-out → execute → score → summary (50% match on a crafted
+  dataset), that scoring waits for completion, and that an unpublished dataset version is rejected. Full suite 339 green
 
 ### 3. Comparison and export (headline)
 

@@ -86,7 +86,10 @@ public sealed record Tenant(
     string KeyId,
     Guid TaskDefinitionId,
     Guid TaskDefinitionVersionId,
-    Guid RunId);
+    Guid RunId,
+    Guid EvaluationSuiteId,
+    Guid EvaluationSuiteVersionId,
+    Guid EvaluationRunId);
 
 public static class Seed
 {
@@ -188,6 +191,43 @@ public static class Seed
             """,
             Guid.CreateVersion7(), org, workspace, run));
 
-        return new Tenant(org, owner, workspace, apiKey, keyId, definition, version, run);
+        // V0007: one row in every evaluation table.
+        var suite = Guid.CreateVersion7();
+        var suiteVersion = Guid.CreateVersion7();
+        var evaluationRun = Guid.CreateVersion7();
+        await tdb.RunAsync("aiep_api", org, owner, async c =>
+        {
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.evaluation_suites (id, organization_id, workspace_id, slug, name, current_version, created_by)
+                VALUES ($1, $2, $3, 'eval', 'Eval', 1, $4)
+                """,
+                suite, org, workspace, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.evaluation_suite_versions
+                    (id, organization_id, workspace_id, suite_id, version, status, examples, example_count, published_at, created_by)
+                VALUES ($1, $2, $3, $4, 1, 'published', '[]'::jsonb, 0, now(), $5)
+                """,
+                suiteVersion, org, workspace, suite, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.evaluation_runs
+                    (id, organization_id, workspace_id, suite_version_id, task_definition_version_id, status, example_count,
+                     created_by, started_at, completed_at)
+                VALUES ($1, $2, $3, $4, $5, 'Completed', 1, $6, now(), now())
+                """,
+                evaluationRun, org, workspace, suiteVersion, version, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.evaluation_results
+                    (id, organization_id, workspace_id, evaluation_run_id, example_ordinal, task_run_id)
+                VALUES ($1, $2, $3, $4, 0, $5)
+                """,
+                Guid.CreateVersion7(), org, workspace, evaluationRun, run);
+        });
+
+        return new Tenant(org, owner, workspace, apiKey, keyId, definition, version, run,
+            suite, suiteVersion, evaluationRun);
     }
 }

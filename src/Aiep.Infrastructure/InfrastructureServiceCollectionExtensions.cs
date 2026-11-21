@@ -1,10 +1,12 @@
 using Aiep.Application.Authorization;
 using Aiep.Application.ControlPlane;
+using Aiep.Application.Evaluation;
 using Aiep.Application.Execution;
 using Aiep.Application.Execution.Handlers;
 using Aiep.Application.Execution.Providers;
 using Aiep.Application.Identity;
 using Aiep.Infrastructure.ControlPlane;
+using Aiep.Infrastructure.Evaluation;
 using Aiep.Infrastructure.Execution;
 using Aiep.Infrastructure.Identity;
 using Aiep.Infrastructure.Persistence;
@@ -56,6 +58,11 @@ public static class InfrastructureServiceCollectionExtensions
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IPricing>(sp => new PricingStore(
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
+
+        // Evaluation (ADR-0014): versioned scorers and the suites/runs store.
+        services.AddSingleton<IScorer, ExactMatchScorer>();
+        services.AddSingleton<IEvaluationStore>(sp => new EvaluationStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>(), sp.GetServices<IScorer>()));
 
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 

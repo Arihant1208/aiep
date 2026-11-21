@@ -202,6 +202,68 @@ public sealed class ModelPricing
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+public sealed class EvaluationSuite
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public required string Slug { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+    public string Status { get; set; } = "active";
+    public int? CurrentVersion { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class EvaluationSuiteVersion
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid SuiteId { get; set; }
+    public int Version { get; set; }
+    public string Status { get; set; } = "draft";
+    public string Examples { get; set; } = "[]";
+    public int ExampleCount { get; set; }
+    public DateTimeOffset? PublishedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+}
+
+public sealed class EvaluationRun
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid SuiteVersionId { get; set; }
+    public Guid TaskDefinitionVersionId { get; set; }
+    public string Status { get; set; } = "Running";
+    public int ExampleCount { get; set; }
+    public string? Summary { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class EvaluationResult
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid EvaluationRunId { get; set; }
+    public int ExampleOrdinal { get; set; }
+    public Guid TaskRunId { get; set; }
+    public string? Score { get; set; }
+    public bool? Passed { get; set; }
+    public DateTimeOffset? ScoredAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
 public sealed class IdempotencyKey
 {
     public Guid Id { get; set; }
