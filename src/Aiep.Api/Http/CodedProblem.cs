@@ -40,4 +40,7 @@ internal static class Problems
 
     public static IResult PayloadTooLarge(string detail) =>
         new CodedProblem(StatusCodes.Status413PayloadTooLarge, "request.too_large", detail, title: null);
+
+    public static IResult TooManyRequests(string code, string detail) =>
+        new CodedProblem(StatusCodes.Status429TooManyRequests, code, detail, title: null);
 }

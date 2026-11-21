@@ -264,6 +264,31 @@ public sealed class EvaluationResult
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+public sealed class QuotaBudget
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid? WorkspaceId { get; set; }
+    public int WindowSeconds { get; set; }
+    public decimal LimitUsd { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class QuotaReservation
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid RunId { get; set; }
+    public decimal EstimatedUsd { get; set; }
+    public decimal? ActualUsd { get; set; }
+    public string Status { get; set; } = "reserved";
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? SettledAt { get; set; }
+}
+
 public sealed class IdempotencyKey
 {
     public Guid Id { get; set; }

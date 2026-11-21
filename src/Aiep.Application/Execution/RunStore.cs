@@ -30,13 +30,15 @@ public sealed record SubmitRunRequest(
     Guid CallerId,
     string? IdempotencyKey,
     string? Traceparent,
-    Guid? CreatedBy);
+    Guid? CreatedBy,
+    decimal EstimatedCostUsd = 0m);
 
 public enum SubmitStatus
 {
     Created,
     Existing,
     Conflict,
+    BudgetExceeded,
 }
 
 public sealed record SubmitResult(SubmitStatus Status, RunView? Run);

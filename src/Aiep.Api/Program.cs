@@ -32,6 +32,7 @@ v1.MapApiKeyEndpoints();
 v1.MapTaskDefinitionEndpoints();
 v1.MapRunEndpoints();
 v1.MapEvaluationEndpoints();
+v1.MapQuotaEndpoints();
 
 app.Run();
 

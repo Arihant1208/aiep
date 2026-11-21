@@ -44,9 +44,17 @@ quality/latency/cost gradient with no spend; the real Anthropic adapter stays a 
 
 ### 4. Cost governance
 
-- [ ] Reserve-then-settle quota ledger; per-organization/workspace budgets; reserve at submit (429 on exceed), settle the
-  actual cost at completion, release on failure — completes threat T12
-- [ ] Tests: a tenant over budget is refused; settle and release adjust the ledger
+- [x] Reserve-then-settle quota ledger (V0008): `quota_budgets` (org-wide spend limit over a rolling window) and
+  `quota_reservations`. At submission a run reserves its estimated cost (input tokens + a max-output allowance × pricing);
+  if that would exceed the budget the whole submission rolls back and the API returns `429 quota.budget_exceeded`. The
+  worker settles the actual cost when the run reaches a terminal state. Threat T12
+- [x] Budget administration endpoints (`PUT …/budget` with `org:manage`, `GET …/usage` with `usage:read`)
+- [x] `QuotaTests` (over-budget submissions refused, nothing committed, settle records the actual cost) and
+  `QuotaEndpointsTests` (set/read budget, a submission over budget → 429, the org:manage gate). Full suite 349 green
+
+**Phase 4 is complete.** Two configurations can be compared on one dataset with the quality/latency/cost trade-offs
+explained, and spend is governed by reserve-then-settle budgets. The real Anthropic adapter remains a drop-in behind
+`IModelProvider`.
 
 ## Deviations and decisions
 

@@ -34,6 +34,8 @@ public sealed class AiepDbContext : DbContext
     public DbSet<EvaluationSuiteVersion> EvaluationSuiteVersions => Set<EvaluationSuiteVersion>();
     public DbSet<EvaluationRun> EvaluationRuns => Set<EvaluationRun>();
     public DbSet<EvaluationResult> EvaluationResults => Set<EvaluationResult>();
+    public DbSet<QuotaBudget> QuotaBudgets => Set<QuotaBudget>();
+    public DbSet<QuotaReservation> QuotaReservations => Set<QuotaReservation>();
 
     internal static AiepDbContext Create(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
@@ -69,6 +71,11 @@ public sealed class AiepDbContext : DbContext
         modelBuilder.Entity<EvaluationSuiteVersion>().Property(v => v.Examples).HasColumnType("jsonb");
         modelBuilder.Entity<EvaluationRun>().Property(r => r.Summary).HasColumnType("jsonb");
         modelBuilder.Entity<EvaluationResult>().Property(r => r.Score).HasColumnType("jsonb");
+        modelBuilder.Entity<QuotaBudget>().ToTable("quota_budgets");
+        modelBuilder.Entity<QuotaReservation>().ToTable("quota_reservations");
+        modelBuilder.Entity<QuotaBudget>().Property(b => b.LimitUsd).HasColumnType("numeric(14,4)");
+        modelBuilder.Entity<QuotaReservation>().Property(r => r.EstimatedUsd).HasColumnType("numeric(12,6)");
+        modelBuilder.Entity<QuotaReservation>().Property(r => r.ActualUsd).HasColumnType("numeric(12,6)");
 
         // Money columns map to the numeric types in the schema.
         modelBuilder.Entity<ModelPricing>().Property(p => p.InputPricePerMtok).HasColumnType("numeric(12,4)");

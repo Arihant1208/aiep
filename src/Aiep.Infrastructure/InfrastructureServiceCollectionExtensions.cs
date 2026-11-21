@@ -58,6 +58,8 @@ public static class InfrastructureServiceCollectionExtensions
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IPricing>(sp => new PricingStore(
             sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IQuota>(sp => new QuotaStore(
+            sp.GetRequiredService<TenantDatabase>(), sp.GetRequiredService<TimeProvider>()));
 
         // Evaluation (ADR-0014): versioned scorers and the suites/runs store.
         services.AddSingleton<IScorer, ExactMatchScorer>();

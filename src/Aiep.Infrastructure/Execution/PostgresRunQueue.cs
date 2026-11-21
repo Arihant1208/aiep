@@ -187,6 +187,12 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
             attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.CostUsd ?? DBNull.Value });
             attemptUpdate.Parameters.Add(new NpgsqlParameter { Value = (object?)settlement.PricingId ?? DBNull.Value });
             await attemptUpdate.ExecuteNonQueryAsync(token);
+
+            // Settle the budget reservation with the actual cost once the run reaches a terminal state (threat T12).
+            if (terminal)
+            {
+                await QuotaLedger.SettleAsync(session, settlement.OrganizationId, settlement.RunId, settlement.CostUsd ?? 0m, token);
+            }
         }, cancellationToken);
 
     public Task<int> ReconcileExpiredLeasesAsync(int maxRuns = 100, CancellationToken cancellationToken = default) =>

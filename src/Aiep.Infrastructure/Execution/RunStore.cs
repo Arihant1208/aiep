@@ -38,6 +38,11 @@ internal sealed class RunStore(TenantDatabase database, TimeProvider time) : IRu
             }, cancellationToken);
             return new SubmitResult(SubmitStatus.Existing, winner);
         }
+        catch (BudgetExceededException)
+        {
+            // The reservation would exceed the organization budget; nothing was committed.
+            return new SubmitResult(SubmitStatus.BudgetExceeded, null);
+        }
     }
 
     private async Task<SubmitResult> SubmitCoreAsync(
@@ -72,6 +77,13 @@ internal sealed class RunStore(TenantDatabase database, TimeProvider time) : IRu
             insert.Parameters.Add(new NpgsqlParameter { Value = (object?)request.Traceparent ?? DBNull.Value });
             insert.Parameters.Add(new NpgsqlParameter { Value = (object?)request.CreatedBy ?? DBNull.Value });
             await insert.ExecuteNonQueryAsync(token);
+        }
+
+        // Reserve the estimated cost against the budget (threat T12); over budget rolls the whole submission back.
+        if (!await QuotaLedger.TryReserveAsync(
+                session, context.OrganizationId!.Value, request.WorkspaceId, runId, request.EstimatedCostUsd, token))
+        {
+            throw new BudgetExceededException();
         }
 
         if (request.IdempotencyKey is { } idemKey)
@@ -205,4 +217,6 @@ internal sealed class RunStore(TenantDatabase database, TimeProvider time) : IRu
     private static byte[] Hash(string value) => SHA256.HashData(Encoding.UTF8.GetBytes(value));
 
     private sealed class IdempotencyRaceException : Exception;
+
+    private sealed class BudgetExceededException : Exception;
 }

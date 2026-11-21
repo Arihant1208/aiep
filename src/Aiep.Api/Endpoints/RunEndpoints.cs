@@ -25,7 +25,7 @@ public static class RunEndpoints
 
         v1.MapPost(Base, async (
             string organizationId, string workspaceId, SubmitRunBody body, HttpContext http,
-            IControlPlaneStore controlPlane, ITaskCatalogStore catalog, IRunStore runs, CancellationToken ct) =>
+            IControlPlaneStore controlPlane, ITaskCatalogStore catalog, IRunStore runs, IPricing pricing, CancellationToken ct) =>
         {
             var (subject, org, ws, failure) = await EndpointAuth.ResolveWorkspaceAsync(organizationId, workspaceId, http, controlPlane, ct);
             if (failure is not null)
@@ -87,14 +87,20 @@ public static class RunEndpoints
                 return Problems.BadRequest("Idempotency-Key must not be blank.");
             }
 
+            // Estimate the run's cost for the budget reservation (threat T12): input tokens now, plus a max-output allowance.
+            var price = await pricing.ResolveAsync(version.ModelProvider, version.ModelName, ct);
+            var inputTokens = System.Text.Encoding.UTF8.GetByteCount(inputJson) / 4;
+            var estimate = price?.CostFor(inputTokens, 2048) ?? 0m;
+
             var request = new SubmitRunRequest(
                 ws, version.Id, inputJson, version.MaxAttempts, callerId,
-                idempotencyKey, Activity.Current?.Id, subject.SubjectId);
+                idempotencyKey, Activity.Current?.Id, subject.SubjectId, estimate);
             var result = await runs.SubmitAsync(TenantContext.ForOrganization(org, actor.SubjectId), request, IdempotencyRetention, ct);
 
             return result.Status switch
             {
                 SubmitStatus.Conflict => Problems.Conflict("idempotency.conflict", "This Idempotency-Key was used with a different payload."),
+                SubmitStatus.BudgetExceeded => Problems.TooManyRequests("quota.budget_exceeded", "The organization's spend budget would be exceeded."),
                 SubmitStatus.Existing => Results.Ok(RunResponse.From(result.Run!, includeOutput: true)),
                 _ => Results.Accepted(
                     $"/v1/organizations/{organizationId}/workspaces/{workspaceId}/runs/{RunResponse.From(result.Run!, false).Id}",

@@ -89,6 +89,7 @@ instead of raising a cast error.
 | [`V0005__purge_expired.sql`](../../db/migrations/V0005__purge_expired.sql) | (no tables) `purge_expired` `SECURITY DEFINER` retention sweep + `idempotency_keys` definer-purge policy |
 | [`V0006__pricing_and_cost.sql`](../../db/migrations/V0006__pricing_and_cost.sql) | `model_pricing` (global, seeded); adds `cost_usd`/`pricing_id` to `task_runs` and `task_run_attempts` |
 | [`V0007__evaluation.sql`](../../db/migrations/V0007__evaluation.sql) | `evaluation_suites`, `evaluation_suite_versions` (immutable), `evaluation_runs`, `evaluation_results` |
+| [`V0008__quotas.sql`](../../db/migrations/V0008__quotas.sql) | `quota_budgets`, `quota_reservations` (reserve-then-settle spend budgets) |
 
 `aiep.schema_migrations` (version, name, checksum, applied time) is created by `Aiep.Migrator` itself and is readable
 only by `aiep_migrator`.
@@ -199,7 +200,8 @@ Each call takes a pooled connection, begins a transaction, runs
 | `run_artifacts` | Kind (input/output/log), storage path, size, content hash, content type. |
 | `api_keys` | **Built.** `key_id` unique, `secret_hash` (32 bytes), owner, org, optional workspace, `permissions text[]`, `environment`, `expires_at`, `revoked_at`, `last_used_at`. |
 | `provider_connections` | Provider, secret **reference** (Key Vault URI), allowed models. Never the secret. |
-| `quota_reservations` | Reserve-then-settle ledger per run. |
+| `quota_budgets` | **Built.** Per-organization (optionally per-workspace) spend limit over a rolling window. No row = no limit. |
+| `quota_reservations` | **Built.** Reserve-then-settle ledger, one per run: `estimated_usd` at submit, `actual_usd` at settle. Committed = `sum(coalesce(actual, estimated))` over the window. |
 | `evaluation_suites` / `_versions` / `evaluation_runs` / `evaluation_results` | **Built.** Datasets (suites → immutable versions holding `[{input, expected}]`), an evaluation run (a dataset version against a task-definition version, fanned out to one task_run per example), and per-example results (link to the task_run, scorer scores, pass/fail). |
 | `audit_events` | **Built.** Append-only: actor, action, target, org, workspace, outcome, reason, correlation ID, timestamp. Services get INSERT/SELECT only; a trigger blocks UPDATE/DELETE. |
 | `model_pricing` | **Built.** Provider, model, `effective_from`, input/output price per Mtok, source URL. Global (not tenant-owned, no RLS); services read only, a migration seeds it. A run's `cost_usd` records the `pricing_id` it used. |

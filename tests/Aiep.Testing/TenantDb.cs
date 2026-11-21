@@ -225,6 +225,21 @@ public static class Seed
                 VALUES ($1, $2, $3, $4, 0, $5)
                 """,
                 Guid.CreateVersion7(), org, workspace, evaluationRun, run);
+
+            // V0008: one row in each quota table (an org-wide budget and a settled reservation for the seed run).
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.quota_budgets (id, organization_id, window_seconds, limit_usd, created_by)
+                VALUES ($1, $2, 86400, 1000.0000, $3)
+                """,
+                Guid.CreateVersion7(), org, owner);
+            await TenantDb.ExecuteAsync(c,
+                """
+                INSERT INTO aiep.quota_reservations
+                    (id, organization_id, workspace_id, run_id, estimated_usd, actual_usd, status, settled_at)
+                VALUES ($1, $2, $3, $4, 0.010000, 0.000000, 'settled', now())
+                """,
+                Guid.CreateVersion7(), org, workspace, run);
         });
 
         return new Tenant(org, owner, workspace, apiKey, keyId, definition, version, run,
