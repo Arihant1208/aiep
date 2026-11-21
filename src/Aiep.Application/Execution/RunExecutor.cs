@@ -75,6 +75,14 @@ public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, Time
 
             var result = await handler.ExecuteAsync(input, execution.Token);
             await StopHeartbeatAsync();
+
+            if (System.Text.Encoding.UTF8.GetByteCount(result.OutputJson) > ExecutionLimits.MaxOutputBytes)
+            {
+                // Oversized output is a permanent failure; it is never persisted (threat T12).
+                return await SettleFailure(
+                    run, ErrorCategory.OutputInvalid, "output exceeds the size limit", providerMayHaveCompleted: true, stoppingToken);
+            }
+
             ExecutionTelemetry.ProviderLatency.Record(
                 result.Usage.ProviderLatency.TotalMilliseconds,
                 new TagList { { "model_provider", run.ModelProvider }, { "model_name", run.ModelName } });

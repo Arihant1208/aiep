@@ -83,6 +83,19 @@ public sealed class RunEndpointsTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task Oversized_input_is_rejected()
+    {
+        var ctx = await NewWorkspaceAsync("Big Co");
+        var definition = await PublishedDefinitionAsync(ctx, "big");
+        var huge = new string('x', 300_000);
+
+        var response = await SendAsync(HttpMethod.Post, ctx.Runs, ctx.Token,
+            new { taskDefinitionId = definition, input = new { blob = huge } });
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+    }
+
+    [Fact]
     public async Task A_viewer_cannot_submit_runs()
     {
         var ctx = await NewWorkspaceAsync("Viewer Co");

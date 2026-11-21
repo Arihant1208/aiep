@@ -18,6 +18,7 @@ public static class ProblemCodes
             StatusCodes.Status404NotFound => "resource.not_found",
             StatusCodes.Status405MethodNotAllowed => "request.method_not_allowed",
             StatusCodes.Status409Conflict => "resource.conflict",
+            StatusCodes.Status413PayloadTooLarge => "request.too_large",
             StatusCodes.Status429TooManyRequests => "rate_limit.exceeded",
             _ => "server.error",
         });

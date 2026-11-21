@@ -48,6 +48,12 @@ public static class RunEndpoints
                 return Problems.BadRequest("input is required.");
             }
 
+            var inputJson = input.GetRawText();
+            if (System.Text.Encoding.UTF8.GetByteCount(inputJson) > ExecutionLimits.MaxInputBytes)
+            {
+                return Problems.PayloadTooLarge($"input exceeds the {ExecutionLimits.MaxInputBytes}-byte limit.");
+            }
+
             var definition = await catalog.GetDefinitionAsync(org, subject!.SubjectId, ws, definitionId, ct);
             if (definition is null)
             {
@@ -82,7 +88,7 @@ public static class RunEndpoints
             }
 
             var request = new SubmitRunRequest(
-                ws, version.Id, input.GetRawText(), version.MaxAttempts, callerId,
+                ws, version.Id, inputJson, version.MaxAttempts, callerId,
                 idempotencyKey, Activity.Current?.Id, subject.SubjectId);
             var result = await runs.SubmitAsync(TenantContext.ForOrganization(org, actor.SubjectId), request, IdempotencyRetention, ct);
 

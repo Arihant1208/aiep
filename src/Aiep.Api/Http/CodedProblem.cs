@@ -37,4 +37,7 @@ internal static class Problems
 
     public static IResult Conflict(string code, string detail) =>
         new CodedProblem(StatusCodes.Status409Conflict, code, detail, title: null);
+
+    public static IResult PayloadTooLarge(string detail) =>
+        new CodedProblem(StatusCodes.Status413PayloadTooLarge, "request.too_large", detail, title: null);
 }

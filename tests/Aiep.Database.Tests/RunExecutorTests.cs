@@ -147,6 +147,27 @@ public sealed class RunExecutorTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Output_over_the_size_limit_fails_the_run_as_output_invalid()
+    {
+        await EnqueueAsync(_tenant.TaskDefinitionVersionId);
+        var claimed = await WorkerQueue.ClaimAsync("worker-1");
+        var huge = "\"" + new string('y', 1_100_000) + "\"";
+        var handler = new DelegatingHandler((_, _) =>
+            Task.FromResult(new HandlerResult(huge, new ModelUsage(1, 1, TimeSpan.Zero))));
+
+        var outcome = await Executor(RegistryOf(handler)).ExecuteAsync(claimed!, CancellationToken.None);
+
+        Assert.Equal(TaskRunStatus.Failed, outcome);
+        var (status, category, output) = await _tdb.RunAsync("aiep_api", _tenant.OrganizationId, _tenant.OwnerId, async c => (
+            await TenantDb.ScalarAsync<string>(c, "SELECT status FROM aiep.task_runs WHERE id = $1", claimed!.RunId),
+            await TenantDb.ScalarAsync<string>(c, "SELECT error_category FROM aiep.task_runs WHERE id = $1", claimed!.RunId),
+            await TenantDb.ScalarAsync<string>(c, "SELECT coalesce(output::text, '') FROM aiep.task_runs WHERE id = $1", claimed!.RunId)));
+        Assert.Equal("Failed", status);
+        Assert.Equal("OutputInvalid", category);
+        Assert.Equal(string.Empty, output);
+    }
+
+    [Fact]
     public async Task A_run_whose_handler_is_not_allowlisted_fails()
     {
         await EnqueueAsync(_tenant.TaskDefinitionVersionId);

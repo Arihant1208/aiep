@@ -32,8 +32,13 @@ telemetry. Phase 3 keeps the deterministic fake provider; the real Anthropic ada
 
 ### 3. Isolation and wrap
 
-- [ ] Input/output payload size limits enforced at submission and on handler output (threat T12)
-- [ ] Observability doc; threat model T11/T12 verified-by; roadmap and status updated
+- [x] Payload size limits (`ExecutionLimits`): input is rejected at submission with 413 `request.too_large`; oversized
+  handler output is a permanent `OutputInvalid` failure and is never persisted (threat T12). This complements the per-run
+  timeout and cooperative cancellation already enforced by `RunExecutor`
+- [x] Observability doc; threat model T11/T12 verified-by; roadmap and status updated
+
+**Phase 3 is complete.** Every run is traced (linked execution span), measured (payload-free metrics) and cleaned up
+safely (retention purge), with payload limits bounding its footprint. Full suite 333 green.
 
 ## Deviations and decisions
 

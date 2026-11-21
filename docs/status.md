@@ -3,8 +3,8 @@
 *What AIEP **is** right now — not the plan, the plan is in the [roadmap](roadmap/README.md). Updated at the end of each
 vertical slice. This page links to canonical docs rather than repeating them.*
 
-**As of:** 2026-11-21 · **Phase:** 3 **in progress** (execution isolation and observability); Phases 0–2 complete ·
-**Latest commit:** `Add retention cleanup for runs and idempotency keys (Phase 3, slice 2)`.
+**As of:** 2026-11-21 · **Phase:** 3 **complete** (execution isolation and observability); Phase 4 next ·
+**Latest commit:** `Bound run payloads and close out Phase 3 (slice 3)`.
 
 ## In one paragraph
 
@@ -56,9 +56,9 @@ with the permission, status codes and audit action for each endpoint.
 | `Aiep.Domain.Tests` | 42 | Run state machine; retry classification and full-jitter backoff |
 | `Aiep.Application.Tests` | 72 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code); fake provider, completion handler and handler-registry allowlist |
 | `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
-| `Aiep.Database.Tests` | 120 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash; execution telemetry (linked spans, payload-free metrics); retention purge (expired keys, old terminal runs) |
-| `Aiep.Api.Tests` | 90 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, and the task-definition / run endpoints (authoring, idempotency, cancel), against real Postgres + Keycloak |
-| **Total** | **331** | |
+| `Aiep.Database.Tests` | 124 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash; execution telemetry (linked spans, payload-free metrics); retention purge (expired keys, old terminal runs); output payload limit |
+| `Aiep.Api.Tests` | 91 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, and the task-definition / run endpoints (authoring, idempotency, cancel), against real Postgres + Keycloak |
+| **Total** | **333** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -69,11 +69,11 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-**Phases 0–2 are complete.** **Phase 3 is in progress** ([checklist](roadmap/phase-3.md)): slices 1–2 landed execution
-telemetry (the worker's `run.execute` span links to the run's stored `traceparent`; run metrics carry only
-low-cardinality labels, proven payload-free) and retention cleanup (a worker sweep purges expired idempotency keys and
-terminal runs past the window, with their attempts). Still to come: input/output payload size limits, then the real
-Anthropic provider adapter behind `IModelProvider` once budget guards exist.
+**Phases 0–3 are complete** ([Phase 3 checklist](roadmap/phase-3.md)): every run is traced (an execution span linked to
+the stored `traceparent`), measured (payload-free, low-cardinality metrics) and cleaned up safely (retention purge), with
+input/output size limits bounding its footprint. Next is **Phase 4: evaluation and cost governance**
+([roadmap](roadmap/README.md)) — compare two configurations on one dataset and explain the quality/latency/cost
+trade-offs — which is also where the real Anthropic provider adapter and reserve-then-settle quotas land.
 
 ## Keeping this page honest
 
