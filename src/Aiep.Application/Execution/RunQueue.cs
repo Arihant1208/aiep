@@ -33,6 +33,7 @@ public sealed record ClaimedRun(
     int TimeoutSeconds,
     int LeaseSeconds,
     DateTimeOffset LeaseExpiresAt,
+    string? Traceparent,
     bool CancelRequested);
 
 /// <summary>The result of a heartbeat: whether the lease is still ours, and whether cancellation was requested.</summary>

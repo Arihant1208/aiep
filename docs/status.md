@@ -3,8 +3,8 @@
 *What AIEP **is** right now — not the plan, the plan is in the [roadmap](roadmap/README.md). Updated at the end of each
 vertical slice. This page links to canonical docs rather than repeating them.*
 
-**As of:** 2026-11-14 · **Phase:** 2 **complete** (task lifecycle and durable execution); Phase 3 next · **Latest
-commit:** `Prove durable execution across a worker crash (Phase 2, slice 6)`.
+**As of:** 2026-11-21 · **Phase:** 3 **in progress** (execution isolation and observability); Phases 0–2 complete ·
+**Latest commit:** `Add execution telemetry: linked spans and run metrics (Phase 3, slice 1)`.
 
 ## In one paragraph
 
@@ -39,7 +39,7 @@ Full local stack: [`docker compose --profile app up -d --build`](development/loc
 - **Application** — `TenantContext`; identity primitives (API-key format/hashing, `ExternalIdentity`); resource-ID encoding ([`ResourceId`](../src/Aiep.Application/Ids/ResourceId.cs)); the [authorization model](security/authorization-model.md) (`Permission`, `RolePermissions`, `AuthorizationSubject`, `IAuthorizationService`, `AuthorizationInvariants`); the control-plane port `IControlPlaneStore`; the execution ports `IModelProvider` (with the deterministic `FakeModelProvider`, ADR-0009), `ITaskHandler` / `IHandlerRegistry` allowlist and the `completion` handler (ADR-0007); the queue ports `IRunQueue` and `IIdempotencyStore` (ADR-0005, ADR-0015); `RunExecutor`, the worker's execution orchestration.
 - **Infrastructure** — `TenantDatabase` unit of work (the **only** path to tenant data: transaction-local `set_config`, EF `AiepDbContext` bound to that connection); API-key store, subject directory and `ControlPlaneStore` over the unit of work and `SECURITY DEFINER` lookups ([ADR-0017](adr/0017-pre-tenant-operations-security-definer.md)); `PostgresRunQueue` and the idempotency store over the V0003 `claim_next_run` / `reconcile_expired_leases` definer functions.
 - **Api** — two-scheme authentication ([authentication, as built](security/authentication.md)); the `/v1` [control-plane endpoints](api/control-plane.md) (organizations, members, workspaces, grants, API keys, `/me`, `/me/permissions`) with `EndpointAuth` (resolve + authorize) and `CodedProblem`; Problem Details with stable `code`s; correlation-id and credentials-in-URL middleware. The [task-execution API](api/task-execution.md): task-definition and version authoring and runs (`POST …/runs` with `Idempotency-Key`, get, list, cancel), workspace-scoped with result-read gating.
-- **Worker** — `RunWorker` loop (claim → execute → settle, with LISTEN/NOTIFY wake) and `ReconcilerService` (expired-lease recovery), hosting `RunExecutor`.
+- **Worker** — `RunWorker` loop (claim → execute → settle, with LISTEN/NOTIFY wake) and `ReconcilerService` (expired-lease recovery), hosting `RunExecutor`. Execution emits an `Aiep.Execution` span linked to the run's stored `traceparent` and `Aiep.Runs` metrics, payload-free ([observability](architecture/observability.md), ADR-0012).
 - **Data** — V0001: `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events`. V0002: `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys`. V0003: the `claim_next_run` and `reconcile_expired_leases` queue functions ([data model](data/data-model.md)).
 
 ## What a caller can do today
@@ -56,9 +56,9 @@ with the permission, status codes and audit action for each endpoint.
 | `Aiep.Domain.Tests` | 42 | Run state machine; retry classification and full-jitter backoff |
 | `Aiep.Application.Tests` | 72 | Key format/hashing, resource IDs, authorization model (incl. matrix-vs-code); fake provider, completion handler and handler-registry allowlist |
 | `Aiep.Architecture.Tests` | 4 | Module-boundary rules (ADR-0002) via assembly references |
-| `Aiep.Database.Tests` | 118 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash |
+| `Aiep.Database.Tests` | 120 | RLS isolation, no-context/wrong-context/pool-leak, composite FKs, migrator; V0002 task-execution privileges, the version immutability trigger and cross-tenant run/attempt FKs; the work queue (claim/heartbeat/settle/reconcile, concurrency, idempotency); the worker execution paths (success/fail/retry/dead-letter/cancel); durable execution across a worker crash; execution telemetry (linked spans, payload-free metrics) |
 | `Aiep.Api.Tests` | 90 | OIDC + API-key auth, control-plane endpoints, the cross-tenant security suite, and the task-definition / run endpoints (authoring, idempotency, cancel), against real Postgres + Keycloak |
-| **Total** | **326** | |
+| **Total** | **328** | |
 
 Run: `dotnet test Aiep.slnx`. Database and API suites need Docker (Testcontainers).
 
@@ -69,11 +69,11 @@ All architectural decisions are recorded as ADRs — see the [ADR index](adr/REA
 
 ## What's next
 
-**Phase 1 and Phase 2 are complete** ([Phase 2 checklist](roadmap/phase-2.md)): the exit criterion — submit → queue →
-execute → persist, surviving a simulated worker crash — is met and proven by tests, and ADR-0005's acceptance criterion
-is ticked. Next is **Phase 3: execution isolation and observability** ([roadmap](roadmap/README.md)) — every run
-traceable, measurable and cleaned up safely (worker spans linked to the stored `traceparent`, run artifacts / blob
-storage, retention) — and the real Anthropic provider adapter behind `IModelProvider` once budget guards exist.
+**Phases 0–2 are complete.** **Phase 3 is in progress** ([checklist](roadmap/phase-3.md)): slice 1 landed execution
+telemetry — the worker's `run.execute` span links to the run's stored `traceparent`, run metrics carry only
+low-cardinality labels, and tests prove no payloads or ids leak. Still to come: retention and cleanup (purge expired
+idempotency keys and old terminal runs), payload size limits, then the real Anthropic provider adapter behind
+`IModelProvider` once budget guards exist.
 
 ## Keeping this page honest
 

@@ -94,6 +94,7 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
                 TimeoutSeconds: Get<int>("timeout_seconds"),
                 LeaseSeconds: Get<int>("lease_seconds"),
                 LeaseExpiresAt: Get<DateTimeOffset>("lease_expires_at"),
+                Traceparent: Nullable("traceparent"),
                 CancelRequested: Get<bool>("cancel_requested"));
         }, cancellationToken);
     }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Aiep.Domain.Runs;
 
 namespace Aiep.Application.Execution;
@@ -12,6 +13,42 @@ public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, Time
     /// <summary>Executes and settles the run. Returns the terminal/retry status it settled, or null if it abandoned the
     /// run (lease lost or the worker is shutting down) and left recovery to the reconciler.</summary>
     public async Task<TaskRunStatus?> ExecuteAsync(ClaimedRun run, CancellationToken stoppingToken)
+    {
+        // Link the execution span to the submission trace stored on the run (ADR-0012): a link, not a parent, because
+        // execution can happen much later and across retries. Attributes stay low-cardinality and payload-free.
+        var links = ActivityContext.TryParse(run.Traceparent, null, out var submitted)
+            ? new[] { new ActivityLink(submitted) }
+            : null;
+        using var activity = ExecutionTelemetry.Source.StartActivity(
+            "run.execute", ActivityKind.Consumer, default(ActivityContext), links: links);
+        activity?.SetTag("aiep.handler.type", run.HandlerType);
+        activity?.SetTag("aiep.model.provider", run.ModelProvider);
+        activity?.SetTag("aiep.model.name", run.ModelName);
+        activity?.SetTag("aiep.attempt.number", run.AttemptNumber);
+
+        var started = Stopwatch.GetTimestamp();
+        var outcome = await RunAsync(run, stoppingToken);
+        var elapsed = Stopwatch.GetElapsedTime(started);
+
+        var tags = new TagList
+        {
+            { "handler_type", run.HandlerType },
+            { "model_provider", run.ModelProvider },
+            { "model_name", run.ModelName },
+            { "status", outcome?.ToString() ?? "abandoned" },
+        };
+        ExecutionTelemetry.ExecutionDuration.Record(elapsed.TotalMilliseconds, tags);
+        if (outcome is { } settled)
+        {
+            ExecutionTelemetry.RunsSettled.Add(1, tags);
+            activity?.SetTag("aiep.run.status", settled.ToString());
+            activity?.SetStatus(settled is TaskRunStatus.Succeeded ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
+        }
+
+        return outcome;
+    }
+
+    private async Task<TaskRunStatus?> RunAsync(ClaimedRun run, CancellationToken stoppingToken)
     {
         var handler = handlers.Resolve(run.HandlerType, run.HandlerVersion);
         if (handler is null)
@@ -38,6 +75,9 @@ public sealed class RunExecutor(IRunQueue queue, IHandlerRegistry handlers, Time
 
             var result = await handler.ExecuteAsync(input, execution.Token);
             await StopHeartbeatAsync();
+            ExecutionTelemetry.ProviderLatency.Record(
+                result.Usage.ProviderLatency.TotalMilliseconds,
+                new TagList { { "model_provider", run.ModelProvider }, { "model_name", run.ModelName } });
             await queue.SettleAsync(Success(run, result), stoppingToken);
             return TaskRunStatus.Succeeded;
         }
