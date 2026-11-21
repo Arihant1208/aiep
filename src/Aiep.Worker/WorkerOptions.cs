@@ -16,4 +16,13 @@ public sealed class WorkerOptions
 
     /// <summary>Maximum expired leases recovered per reconcile sweep.</summary>
     public int ReconcileBatch { get; set; } = 100;
+
+    /// <summary>How long a terminal run is kept before the retention sweep purges it and its attempts.</summary>
+    public TimeSpan RetentionWindow { get; set; } = TimeSpan.FromDays(30);
+
+    /// <summary>How often the retention sweep runs.</summary>
+    public TimeSpan PurgeInterval { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>Maximum terminal runs purged per sweep.</summary>
+    public int PurgeBatch { get; set; } = 500;
 }

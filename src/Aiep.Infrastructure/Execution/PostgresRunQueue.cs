@@ -191,6 +191,21 @@ internal sealed class PostgresRunQueue(TenantDatabase database, AiepDataSource d
             return (int)(await command.ExecuteScalarAsync(token))!;
         }, cancellationToken);
 
+    public Task<PurgeResult> PurgeExpiredAsync(
+        TimeSpan runRetention, int maxRuns = 500, CancellationToken cancellationToken = default) =>
+        database.ExecuteAsync(TenantContext.None, async (session, token) =>
+        {
+            await using var command = new NpgsqlCommand(
+                "SELECT idempotency_keys_deleted, runs_deleted FROM aiep.purge_expired($1, $2)",
+                session.Connection, session.Transaction);
+            command.Parameters.Add(new NpgsqlParameter { Value = (int)runRetention.TotalSeconds });
+            command.Parameters.Add(new NpgsqlParameter { Value = maxRuns });
+
+            await using var reader = await command.ExecuteReaderAsync(token);
+            await reader.ReadAsync(token);
+            return new PurgeResult(reader.GetInt32(0), reader.GetInt32(1));
+        }, cancellationToken);
+
     public async Task<bool> WaitForEnqueueSignalAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);

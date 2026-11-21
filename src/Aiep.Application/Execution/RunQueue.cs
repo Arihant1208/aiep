@@ -39,6 +39,9 @@ public sealed record ClaimedRun(
 /// <summary>The result of a heartbeat: whether the lease is still ours, and whether cancellation was requested.</summary>
 public sealed record HeartbeatResult(bool LeaseHeld, bool CancelRequested);
 
+/// <summary>What a retention sweep removed.</summary>
+public sealed record PurgeResult(int IdempotencyKeysDeleted, int RunsDeleted);
+
 /// <summary>
 /// How an attempt finished. The worker computes the target state with the Domain state machine and backoff, then the
 /// queue applies it as a conditional update so a late or duplicate attempt that lost the lease cannot overwrite the
@@ -78,6 +81,10 @@ public interface IRunQueue
 
     /// <summary>Recover runs whose worker lease expired; returns how many were recovered.</summary>
     Task<int> ReconcileExpiredLeasesAsync(int maxRuns = 100, CancellationToken cancellationToken = default);
+
+    /// <summary>Delete expired idempotency keys and terminal runs older than <paramref name="runRetention"/> (with their
+    /// attempts), across all tenants, up to <paramref name="maxRuns"/> runs.</summary>
+    Task<PurgeResult> PurgeExpiredAsync(TimeSpan runRetention, int maxRuns = 500, CancellationToken cancellationToken = default);
 
     /// <summary>Wait for an enqueue signal (LISTEN/NOTIFY), returning true if one arrived before the timeout.</summary>
     Task<bool> WaitForEnqueueSignalAsync(TimeSpan timeout, CancellationToken cancellationToken = default);

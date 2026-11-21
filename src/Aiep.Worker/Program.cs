@@ -11,5 +11,6 @@ builder.Services.Configure<WorkerOptions>(builder.Configuration.GetSection(Worke
 builder.Services.AddSingleton<RunExecutor>();
 builder.Services.AddHostedService<RunWorker>();
 builder.Services.AddHostedService<ReconcilerService>();
+builder.Services.AddHostedService<MaintenanceService>();
 
 builder.Build().Run();

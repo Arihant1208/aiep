@@ -85,6 +85,8 @@ instead of raising a cast error.
 | [`V0001__tenancy_baseline.sql`](../../db/migrations/V0001__tenancy_baseline.sql) | `subjects`, `organizations`, `memberships`, `workspaces`, `workspace_memberships`, `api_keys`, `audit_events` |
 | [`V0002__task_execution.sql`](../../db/migrations/V0002__task_execution.sql) | `task_definitions`, `task_definition_versions`, `task_runs`, `task_run_attempts`, `idempotency_keys` |
 | [`V0003__queue_operations.sql`](../../db/migrations/V0003__queue_operations.sql) | (no tables) `claim_next_run`, `reconcile_expired_leases` `SECURITY DEFINER` functions + their definer RLS policies |
+| [`V0004__claim_returns_traceparent.sql`](../../db/migrations/V0004__claim_returns_traceparent.sql) | (no tables) `claim_next_run` returns the stored `traceparent` for span linking (ADR-0012) |
+| [`V0005__purge_expired.sql`](../../db/migrations/V0005__purge_expired.sql) | (no tables) `purge_expired` `SECURITY DEFINER` retention sweep + `idempotency_keys` definer-purge policy |
 
 `aiep.schema_migrations` (version, name, checksum, applied time) is created by `Aiep.Migrator` itself and is readable
 only by `aiep_migrator`.

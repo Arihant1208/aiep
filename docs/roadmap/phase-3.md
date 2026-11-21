@@ -22,9 +22,13 @@ telemetry. Phase 3 keeps the deterministic fake provider; the real Anthropic ada
 
 ### 2. Retention and cleanup
 
-- [ ] Retention window configuration; a worker maintenance service that purges expired idempotency keys and terminal runs
-  (cascading attempts) past the window, cross-tenant via a `SECURITY DEFINER` purge function
-- [ ] Tests: expired keys and old terminal runs are removed; live and recent runs are untouched
+- [x] `purge_expired` (V0005), a cross-tenant `SECURITY DEFINER` function (worker-only) that deletes expired idempotency
+  keys and terminal runs past the retention window with their attempts, bounded per sweep; `idempotency_keys` gains a
+  `definer_purge` policy so the owner can reach rows across tenants
+- [x] `IRunQueue.PurgeExpiredAsync` and the worker `MaintenanceService` (configurable `RetentionWindow` / `PurgeInterval`
+  / `PurgeBatch`)
+- [x] `RetentionTests`: expired keys and old terminal runs (with attempts) are removed; live, recent and active runs are
+  untouched; the API role cannot purge. Full suite 331 green
 
 ### 3. Isolation and wrap
 
